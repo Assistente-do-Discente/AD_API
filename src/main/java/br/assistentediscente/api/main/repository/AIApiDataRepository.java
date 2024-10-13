@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface AIApiDataRepository extends JpaRepository<AIApiData, Long> {
     Optional<AIApiData> findByActiveTrue();
+
+    Optional<AIApiData> findByShortName(String shortName);
 }
