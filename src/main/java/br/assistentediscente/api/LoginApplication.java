@@ -30,27 +30,26 @@ public class LoginApplication {
 	public CommandLineRunner
 	commandLineRunner(InstitutionRepository institutionRepository, AIApiDataRepository aiApiDataRepository) {
 		return args -> {
-
-			institutionRepository.saveAndFlush(Institution
-					.builder()
-							.shortName("UEG")
-							.saudationPhrase("Entre com seu login do ADMS")
-							.pluginClass("ueg.UEGPlugin")
-							.usernameFieldName("CPF")
-							.passwordFieldName("Senha")
-					.build());
-
-			aiApiDataRepository.saveAndFlush(AIApiData
-					.builder()
-					.shortName("Maritalk")
-							.active(true)
-							.keyEnvPath("maritalk.key")
-							.urlApi("https://chat.maritaca.ai/api/chat/inference")
-							.paramsApi("{\"messages\":[{\"role\":\"user\", \"content\": \"?\"}]," +
-									"\"do_sample\": \"False\",\"max_tokens\": 40," +
-									"\"temperature\": 0.5,\"model\": \"sabia-3\"}")
-							.classpathApi("maritalk_api.MaritalkApi")
-					.build());
+//			institutionRepository.saveAndFlush(Institution
+//					.builder()
+//							.shortName("UEG")
+//							.saudationPhrase("Entre com seu login do ADMS")
+//							.pluginClass("ueg.UEGPlugin")
+//							.usernameFieldName("CPF")
+//							.passwordFieldName("Senha")
+//					.build());
+//
+//			aiApiDataRepository.saveAndFlush(AIApiData
+//					.builder()
+//					.shortName("Maritalk")
+//							.active(true)
+//							.keyEnvPath("maritalk.key")
+//							.urlApi("https://chat.maritaca.ai/api/chat/inference")
+//							.paramsApi("{\"messages\":[{\"role\":\"user\", \"content\": \"?\"}]," +
+//									"\"do_sample\": \"False\",\"max_tokens\": 40," +
+//									"\"temperature\": 0.5,\"model\": \"sabia-3\"}")
+//							.classpathApi("maritalk_api.MaritalkApi")
+//					.build());
 		};
 	}
 }
