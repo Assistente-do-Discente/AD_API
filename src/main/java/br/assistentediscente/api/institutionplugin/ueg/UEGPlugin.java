@@ -1,11 +1,17 @@
 package br.assistentediscente.api.institutionplugin.ueg;
 
 import br.assistentediscente.api.institutionplugin.ueg.converter.ConverterUEG;
+import br.assistentediscente.api.institutionplugin.ueg.converter.ParameterTool;
+import br.assistentediscente.api.institutionplugin.ueg.converter.Tool;
 import br.assistentediscente.api.institutionplugin.ueg.dto.KeyUrl;
 import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterScheduleByDisciplineName;
 import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterScheduleByWeekDay;
 import br.assistentediscente.api.institutionplugin.ueg.infos.StudentDataUEG;
+import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.converter.IConverterInstitution;
+import br.assistentediscente.api.integrator.converter.IParameterTool;
+import br.assistentediscente.api.integrator.enums.ClazzType;
+import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.enums.WeekDay;
 import br.assistentediscente.api.integrator.exceptions.UtilExceptionHandler;
 import br.assistentediscente.api.integrator.exceptions.institution.InstitutionComunicationException;
@@ -17,6 +23,8 @@ import br.assistentediscente.api.integrator.institutions.KeyValue;
 import br.assistentediscente.api.integrator.institutions.info.*;
 import br.assistentediscente.api.integrator.serviceplugin.service.IServicePlugin;
 import br.assistentediscente.api.main.model.IStudent;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import lombok.Getter;
@@ -42,10 +50,8 @@ import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Getter
 public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
@@ -470,4 +476,40 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
 
     }
 
+    public List<IBaseTool> getAllInformationToolsPlugins() {
+        List<IBaseTool> tools = new ArrayList<>();
+        Map<String, IParameterTool> parameters = new HashMap<>();
+
+        ParameterTool parameterTool = ParameterTool.builder()
+                .clazz(ClazzType.ENUM)
+                .type(ParameterType.MANDATORY)
+                .description("O dia da semana, como segunda-feira ou sábado")
+                .possibleValues(Arrays.stream(WeekDay.values()).map(WeekDay::getShortName).collect(Collectors.toList()))
+                .build();
+        parameters.put("weekDay", parameterTool);
+
+        Tool getScheduleByWeekDayTool = Tool.builder()
+                .name("getScheduleByWeekDay")
+                .description("Obter o horaráio de aulas do dia informado")
+                .parameters(parameters)
+                .executeMethod(this::getScheduleByWeekDay)
+                .build();
+
+        tools.add(getScheduleByWeekDayTool);
+
+        return tools;
+    }
+
+    public Map<String, String> getScheduleByWeekDay(Map<String, String> parameters) throws JsonProcessingException {
+        Map<String, String> response = new HashMap<>();
+        String weekDay = parameters.get("weekDay");
+
+        ObjectMapper mapper = new ObjectMapper();
+        if (Objects.nonNull(weekDay) && !weekDay.isEmpty()) {
+            response.put("response", mapper.writeValueAsString(getScheduleByWeekDay(WeekDay.getByShortName(weekDay))));
+        } else {
+            throw new InstitutionComunicationException("Ocorreu um problema na obtenção do horario, tente novamente mais tarde");
+        }
+        return response;
+    }
 }
