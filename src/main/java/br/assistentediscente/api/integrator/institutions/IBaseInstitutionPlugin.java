@@ -1,5 +1,6 @@
 package br.assistentediscente.api.integrator.institutions;
 
+import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.enums.WeekDay;
 import br.assistentediscente.api.integrator.exceptions.institution.InstitutionComunicationException;
 import br.assistentediscente.api.integrator.exceptions.intent.IntentNotSupportedException;
@@ -27,6 +28,6 @@ public interface IBaseInstitutionPlugin {
     List<IDisciplineAbsence> getActiveDisciplinesWithAbsences() throws IntentNotSupportedException, InstitutionComunicationException;
     IStudentData getStudentData() throws IntentNotSupportedException, InstitutionComunicationException;
     Set<Class<? extends IServicePlugin>> getAllServicePlugins();
-
+    List<IBaseTool> getAllInformationToolsPlugins();
 
 }

@@ -1,5 +1,6 @@
 package br.assistentediscente.api.main.service;
 
+import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.enums.WeekDay;
 import br.assistentediscente.api.integrator.exceptions.ai.DisciplineNameNotFoundException;
 import br.assistentediscente.api.integrator.exceptions.intent.IntentNotSupportedException;
@@ -320,4 +321,39 @@ public class ResponseService extends Reflection{
         }
     }
 
+    public Object doResponseByToolName(String toolName, String externalID, Map<String, String> parameters) {
+        IStudent student = studentService.findByExternalKey(UUID.fromString(externalID));
+        try {
+            IBaseInstitutionPlugin institutionPlugin = getInstitutionPlugin(institutionPackage, student);
+
+            List<IBaseTool> toolsList = institutionPlugin.getAllInformationToolsPlugins();
+
+            IBaseTool toolForExecute = toolsList.stream().filter(tool -> tool.getName().equals(toolName)).findFirst().orElse(null);
+
+            return invokeResponseMethodByTool(toolForExecute, parameters);
+        }catch (Exception exception){
+            throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
+        }
+    }
+
+    private Object invokeResponseMethodByTool(IBaseTool tool, Map<String, String> parameters) throws Exception {
+        try {
+            if (tool == null) throw new RuntimeException("Tool not found");
+
+            return tool.getExecuteMethod().execute(parameters);
+        } catch (Exception e) {
+            handleException(e, new RuntimeException("Method "+ tool.getName() + " not found"));
+        }
+        return null;
+    }
+
+    public List<IBaseTool> getAllInformationToolsPlugins(String externalID){
+        IStudent student = studentService.findByExternalKey(UUID.fromString(externalID));
+        try {
+            IBaseInstitutionPlugin institutionPlugin = getInstitutionPlugin(institutionPackage, student);
+            return institutionPlugin.getAllInformationToolsPlugins();
+        }catch (Exception exception){
+            throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
+        }
+    }
 }
