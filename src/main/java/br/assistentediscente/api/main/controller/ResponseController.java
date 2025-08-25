@@ -83,15 +83,15 @@ public class ResponseController {
     @PostMapping(value = "/generate-response/{toolName}",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    private ResponseEntity<?> doResponseByToolname(@RequestParam(name = "externalID") String externalID,
+    private ResponseEntity<?> doResponseByToolname(@AuthenticationPrincipal Jwt jwt,
                                                    @RequestBody Map<String, String> params,
                                                    @PathVariable String toolName){
-        return ResponseEntity.ok(responseService.doResponseByToolName(toolName, externalID, params));
+        return ResponseEntity.ok(responseService.doResponseByToolName(toolName, jwt.getSubject(), params));
     }
 
     @GetMapping(path = "/institutionInformationsTools")
-    private ResponseEntity<?> getAllInstitutionInformationTools(@RequestParam(name = "externalID") String externalID){
-        return ResponseEntity.ok(responseService.getAllInformationToolsPlugins(externalID));
+    private ResponseEntity<?> getAllInstitutionInformationTools(@AuthenticationPrincipal Jwt jwt){
+        return ResponseEntity.ok(responseService.getAllInformationToolsPlugins(jwt.getSubject()));
     }
 
 

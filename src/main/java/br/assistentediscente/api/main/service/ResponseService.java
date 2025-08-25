@@ -116,8 +116,8 @@ public class ResponseService extends Reflection{
             Institution baseInstitution = baseInstitutionService.getInstitutionByInstitutionName(institutionName);
             IBaseInstitutionPlugin institutionPlugin = getInstitutionPlugin(institutionPackage,baseInstitution);
             List<KeyValue> studentAccessData = institutionPlugin.authenticateStudent(login, password);
-            return new AutenticationResponse(studentService
-                    .create(studentAccessData, baseInstitution).getExternalKey().toString());
+            Student student = studentService.create(studentAccessData, baseInstitution);
+            return new AutenticationResponse(student.getExternalKey().toString(), baseInstitution.getId());
         }catch (RuntimeException e ){
             handleException(e, new StudentNotAuthenticatedException());
             return null;

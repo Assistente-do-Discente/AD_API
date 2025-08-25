@@ -492,10 +492,49 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 .name("getScheduleByWeekDay")
                 .description("Obter o horaráio de aulas do dia informado")
                 .parameters(parameters)
-                .executeMethod(this::getScheduleByWeekDay)
+                .executeMethod(this::getSchedules)
                 .build();
 
         tools.add(getScheduleByWeekDayTool);
+
+        Map<String, IParameterTool> parameters2 = new HashMap<>();
+        ParameterTool parameterTool2 = ParameterTool.builder()
+                .clazz(ClazzType.STRING)
+                .type(ParameterType.MANDATORY)
+                .description("O nome da disciplina")
+                .build();
+        parameters2.put("disiciplineName", parameterTool2);
+
+        Tool getScheduleByDisciplineNameTool = Tool.builder()
+                .name("getScheduleByDisciplineName")
+                .description("Obter o horaráio de aula da disciplina informada")
+                .parameters(parameters2)
+                .executeMethod(this::getSchedules)
+                .build();
+
+        tools.add(getScheduleByDisciplineNameTool);
+
+        Tool getGradesTool = Tool.builder()
+                .name("getGrades")
+                .description("Obter as notas do estudante")
+                .executeMethod(this::getGrades)
+                .build();
+        tools.add(getGradesTool);
+
+        Tool getAcademicDataTool = Tool.builder()
+                .name("getAcademicData")
+                .description("Obter dados sobre a integralização do estudante no curso")
+                .executeMethod(this::getAcademicData)
+                .build();
+        tools.add(getAcademicDataTool);
+
+        Tool getStudentDataTool = Tool.builder()
+                .name("getStudentData")
+                .description("Obter dados sobre o estudante")
+                .executeMethod(this::getStudentData)
+                .build();
+
+        tools.add(getStudentDataTool);
 
         return tools;
     }
@@ -510,6 +549,34 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         } else {
             throw new InstitutionComunicationException("Ocorreu um problema na obtenção do horario, tente novamente mais tarde");
         }
+        return response;
+    }
+
+    public Map<String, String> getSchedules(Map<String, String> parameters) throws JsonProcessingException {
+        Map<String, String> response = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+        response.put("response", mapper.writeValueAsString(getWeekSchedule()));
+        return response;
+    }
+
+    public Map<String, String> getGrades(Map<String, String> parameters) throws JsonProcessingException {
+        Map<String, String> response = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+        response.put("response", mapper.writeValueAsString(getGrades()));
+        return response;
+    }
+
+    public Map<String, String> getAcademicData(Map<String, String> parameters) throws JsonProcessingException {
+        Map<String, String> response = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+        response.put("response", mapper.writeValueAsString(getAcademicData()));
+        return response;
+    }
+
+    public Map<String, String> getStudentData(Map<String, String> parameters) throws JsonProcessingException {
+        Map<String, String> response = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+        response.put("response", mapper.writeValueAsString(getStudentData()));
         return response;
     }
 }
