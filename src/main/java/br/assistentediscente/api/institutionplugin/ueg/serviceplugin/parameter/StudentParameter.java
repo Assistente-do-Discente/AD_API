@@ -1,10 +1,13 @@
 package br.assistentediscente.api.institutionplugin.ueg.serviceplugin.parameter;
 
+import br.assistentediscente.api.integrator.enums.ClazzType;
 import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.institutions.IBaseInstitutionPlugin;
 import br.assistentediscente.api.integrator.serviceplugin.parameters.AParameter;
 
-public class StudentParameter extends AParameter {
+import java.util.List;
+
+public class StudentParameter implements AParameter {
 
     @Override
     public ParameterType getType() {
@@ -25,4 +28,20 @@ public class StudentParameter extends AParameter {
     public Object getObjectValue(String value) {
         return null;
     }
+
+    @Override
+    public ClazzType getClazz() {
+        return null;
+    }
+
+    @Override
+    public String getDescription() {
+        return null;
+    }
+
+    @Override
+    public List<String> getPossibleValues() {
+        return null;
+    }
+
 }

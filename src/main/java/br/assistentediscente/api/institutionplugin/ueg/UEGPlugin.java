@@ -9,7 +9,6 @@ import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterSchedu
 import br.assistentediscente.api.institutionplugin.ueg.infos.StudentDataUEG;
 import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.converter.IConverterInstitution;
-import br.assistentediscente.api.integrator.converter.IParameterTool;
 import br.assistentediscente.api.integrator.enums.ClazzType;
 import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.enums.WeekDay;
@@ -477,80 +476,79 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
     }
 
     public List<IBaseTool> getAllInformationToolsPlugins() {
-        List<IBaseTool> tools = new ArrayList<>();
-        Map<String, IParameterTool> parameters = new HashMap<>();
-
-        ParameterTool parameterTool = ParameterTool.builder()
-                .clazz(ClazzType.ENUM)
-                .type(ParameterType.MANDATORY)
-                .description("O dia da semana, como segunda-feira ou sábado")
-                .possibleValues(Arrays.stream(WeekDay.values()).map(WeekDay::getShortName).collect(Collectors.toList()))
-                .build();
-        parameters.put("weekDay", parameterTool);
-
-        Tool getScheduleByWeekDayTool = Tool.builder()
-                .name("getScheduleByWeekDay")
-                .description("Obter o horaráio de aulas do dia informado")
-                .parameters(parameters)
-                .executeMethod(this::getSchedules)
-                .build();
-
-        tools.add(getScheduleByWeekDayTool);
-
-        Map<String, IParameterTool> parameters2 = new HashMap<>();
-        ParameterTool parameterTool2 = ParameterTool.builder()
-                .clazz(ClazzType.STRING)
-                .type(ParameterType.MANDATORY)
-                .description("O nome da disciplina")
-                .build();
-        parameters2.put("disiciplineName", parameterTool2);
-
-        Tool getScheduleByDisciplineNameTool = Tool.builder()
-                .name("getScheduleByDisciplineName")
-                .description("Obter o horaráio de aula da disciplina informada")
-                .parameters(parameters2)
-                .executeMethod(this::getSchedules)
-                .build();
-
-        tools.add(getScheduleByDisciplineNameTool);
-
-        Tool getGradesTool = Tool.builder()
-                .name("getGrades")
-                .description("Obter as notas do estudante")
-                .executeMethod(this::getGrades)
-                .build();
-        tools.add(getGradesTool);
-
-        Tool getAcademicDataTool = Tool.builder()
-                .name("getAcademicData")
-                .description("Obter dados sobre a integralização do estudante no curso")
-                .executeMethod(this::getAcademicData)
-                .build();
-        tools.add(getAcademicDataTool);
-
-        Tool getStudentDataTool = Tool.builder()
-                .name("getStudentData")
-                .description("Obter dados sobre o estudante")
-                .executeMethod(this::getStudentData)
-                .build();
-
-        tools.add(getStudentDataTool);
-
-        return tools;
+        return List.of(
+                Tool.tool(
+                        "getSchedule",
+                        "Obter o horário de aulas",
+                        this::getSchedules
+                ),
+                Tool.tool(
+                        "getScheduleByWeekDay",
+                        "Obter o horário de aulas do dia informado",
+                        this::getSchedules,
+                        Map.of(
+                                "weekDay",
+                                ParameterTool.enumParam(
+                                        "O dia da semana, como segunda-feira ou sábado",
+                                        WeekDay.values(),
+                                        WeekDay::getShortName
+                                )
+                        )
+                ),
+                Tool.tool(
+                        "getScheduleByDisciplineName",
+                        "Obter o horário de aula da disciplina informada",
+                        this::getSchedules,
+                        Map.of(
+                                "disciplineName",
+                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY)
+                        )
+                ),
+                Tool.tool(
+                        "getGrades",
+                        "Obter as notas do estudante",
+                        this::getGrades
+                ),
+                Tool.tool(
+                        "getAcademicData",
+                        "Obter dados sobre a integralização do estudante no curso",
+                        this::getAcademicData
+                ),
+                Tool.tool(
+                        "getStudentData",
+                        "Obter dados sobre o estudante",
+                        this::getStudentData
+                )
+        );
     }
 
-    public Map<String, String> getScheduleByWeekDay(Map<String, String> parameters) throws JsonProcessingException {
-        Map<String, String> response = new HashMap<>();
-        String weekDay = parameters.get("weekDay");
-
-        ObjectMapper mapper = new ObjectMapper();
-        if (Objects.nonNull(weekDay) && !weekDay.isEmpty()) {
-            response.put("response", mapper.writeValueAsString(getScheduleByWeekDay(WeekDay.getByShortName(weekDay))));
-        } else {
-            throw new InstitutionComunicationException("Ocorreu um problema na obtenção do horario, tente novamente mais tarde");
-        }
-        return response;
-    }
+//    public List<IBaseTool> getAllInformationToolsPlugins() {
+//        List<IBaseTool> tools = new ArrayList<>();
+//        Map<String, AParameter> parameters = new HashMap<>();
+//
+//        ParameterTool parameterTool = ParameterTool.builder().clazz(ClazzType.ENUM).type(ParameterType.MANDATORY).description("O dia da semana, como segunda-feira ou sábado").possibleValues(Arrays.stream(WeekDay.values()).map(WeekDay::getShortName).collect(Collectors.toList())).build();
+//        parameters.put("weekDay", parameterTool);
+//        Tool getScheduleByWeekDayTool = Tool.builder().name("getScheduleByWeekDay").description("Obter o horaráio de aulas do dia informado").parameters(parameters).executeMethod(this::getSchedules).build();
+//        tools.add(getScheduleByWeekDayTool);
+//
+//        Map<String, AParameter> parameters2 = new HashMap<>();
+//        ParameterTool parameterTool2 = ParameterTool.builder().clazz(ClazzType.STRING).type(ParameterType.MANDATORY).description("O nome da disciplina").build();
+//        parameters2.put("disiciplineName", parameterTool2);
+//        Tool getScheduleByDisciplineNameTool = Tool.builder().name("getScheduleByDisciplineName").description("Obter o horaráio de aula da disciplina informada").parameters(parameters2).executeMethod(this::getSchedules).build();
+//        tools.add(getScheduleByDisciplineNameTool);
+//
+//        Tool getGradesTool = Tool.builder().name("getGrades").description("Obter as notas do estudante").executeMethod(this::getGrades).build();
+//        tools.add(getGradesTool);
+//
+//        Tool getAcademicDataTool = Tool.builder().name("getAcademicData").description("Obter dados sobre a integralização do estudante no curso").executeMethod(this::getAcademicData).build();
+//        tools.add(getAcademicDataTool);
+//
+//        Tool getStudentDataTool = Tool.builder().name("getStudentData").description("Obter dados sobre o estudante").executeMethod(this::getStudentData).build();
+//
+//        tools.add(getStudentDataTool);
+//
+//        return tools;
+//    }
 
     public Map<String, String> getSchedules(Map<String, String> parameters) throws JsonProcessingException {
         Map<String, String> response = new HashMap<>();

@@ -26,4 +26,6 @@ public interface IServicePlugin {
     String doService(IBaseInstitutionPlugin institution, Set<ParameterValue> parameterValues,
                      IPlataformService plataformService) throws BusinessException;
 
+    String getName();
+    String getDescription();
 }

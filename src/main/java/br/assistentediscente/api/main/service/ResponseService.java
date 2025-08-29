@@ -1,5 +1,7 @@
 package br.assistentediscente.api.main.service;
 
+import br.assistentediscente.api.institutionplugin.ueg.converter.ParameterTool;
+import br.assistentediscente.api.institutionplugin.ueg.converter.Tool;
 import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.enums.WeekDay;
 import br.assistentediscente.api.integrator.exceptions.ai.DisciplineNameNotFoundException;
@@ -14,6 +16,8 @@ import br.assistentediscente.api.integrator.institutions.info.IDisciplineAbsence
 import br.assistentediscente.api.integrator.institutions.info.IDisciplineGrade;
 import br.assistentediscente.api.integrator.institutions.info.IDisciplineSchedule;
 import br.assistentediscente.api.integrator.plataformeservice.IPlataformService;
+import br.assistentediscente.api.integrator.serviceplugin.parameters.AParameter;
+import br.assistentediscente.api.integrator.serviceplugin.service.IServicePlugin;
 import br.assistentediscente.api.main.dto.AutenticationResponse;
 import br.assistentediscente.api.main.dto.InstitutionLoginFieldsDTO;
 import br.assistentediscente.api.main.dto.SkillResponse;
@@ -33,11 +37,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.MessageSource;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static br.assistentediscente.api.integrator.exceptions.UtilExceptionHandler.handleException;
 
@@ -327,10 +332,19 @@ public class ResponseService extends Reflection{
             IBaseInstitutionPlugin institutionPlugin = getInstitutionPlugin(institutionPackage, student);
 
             List<IBaseTool> toolsList = institutionPlugin.getAllInformationToolsPlugins();
+            toolsList.addAll(this.getAllServiceToolsPlugins(institutionPlugin));
 
             IBaseTool toolForExecute = toolsList.stream().filter(tool -> tool.getName().equals(toolName)).findFirst().orElse(null);
 
-            return invokeResponseMethodByTool(toolForExecute, parameters);
+            if (toolForExecute == null) {
+                throw new RuntimeException("Tool not found");
+            } else if (toolForExecute.getServiceClass() != null) {
+                IServicePlugin serviceObject = toolForExecute.getServiceClass().getDeclaredConstructor().newInstance();
+                String result = invokeServicePlugin(serviceObject, institutionPlugin, parameters, plataformService);
+                return new HashMap<String, String>(){{put("result", result);}};
+            } else {
+                return invokeResponseMethodByTool(toolForExecute, parameters);
+            }
         }catch (Exception exception){
             throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
         }
@@ -339,7 +353,6 @@ public class ResponseService extends Reflection{
     private Object invokeResponseMethodByTool(IBaseTool tool, Map<String, String> parameters) throws Exception {
         try {
             if (tool == null) throw new RuntimeException("Tool not found");
-
             return tool.getExecuteMethod().execute(parameters);
         } catch (Exception e) {
             handleException(e, new RuntimeException("Method "+ tool.getName() + " not found"));
@@ -347,13 +360,37 @@ public class ResponseService extends Reflection{
         return null;
     }
 
-    public List<IBaseTool> getAllInformationToolsPlugins(String externalID){
+    public List<IBaseTool> getAllToolsPlugins(String externalID){
         IStudent student = studentService.findByExternalKey(UUID.fromString(externalID));
         try {
             IBaseInstitutionPlugin institutionPlugin = getInstitutionPlugin(institutionPackage, student);
-            return institutionPlugin.getAllInformationToolsPlugins();
+
+            return Stream.concat(institutionPlugin.getAllInformationToolsPlugins().stream(),
+                            this.getAllServiceToolsPlugins(institutionPlugin).stream()).collect(Collectors.toCollection(ArrayList::new));
         }catch (Exception exception){
+            exception.printStackTrace();
             throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
         }
+    }
+
+    public List<IBaseTool> getAllServiceToolsPlugins(IBaseInstitutionPlugin institutionPlugin) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        List<IBaseTool> tools = new ArrayList<>();
+        for (Class<? extends IServicePlugin> serviceClass : institutionPlugin.getAllServicePlugins()) {
+            IServicePlugin serviceObject = serviceClass.getDeclaredConstructor().newInstance();
+
+            Map<String, AParameter> parameters = new HashMap<>();
+            for (AParameter parameter : serviceObject.getParameters()) {
+                ParameterTool parameterTool = ParameterTool.builder().clazz(parameter.getClazz()).type(parameter.getType()).description(parameter.getDescription()).build();
+                parameters.put(parameter.getName(), parameterTool);
+            }
+
+            Tool serviceTool = Tool.builder()
+                    .name(serviceObject.getName())
+                    .description(serviceObject.getDescription())
+                    .parameters(parameters)
+                    .build();
+            tools.add(serviceTool);
+        }
+        return tools;
     }
 }

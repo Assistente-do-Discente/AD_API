@@ -89,9 +89,9 @@ public class ResponseController {
         return ResponseEntity.ok(responseService.doResponseByToolName(toolName, jwt.getSubject(), params));
     }
 
-    @GetMapping(path = "/institutionInformationsTools")
-    private ResponseEntity<?> getAllInstitutionInformationTools(@AuthenticationPrincipal Jwt jwt){
-        return ResponseEntity.ok(responseService.getAllInformationToolsPlugins(jwt.getSubject()));
+    @GetMapping(path = "/institutionTools")
+    private ResponseEntity<?> getAllInstitutionTools(){
+        return ResponseEntity.ok(responseService.getAllToolsPlugins("1148d2a3-0c30-4ee2-9a65-8bdfb3e8ac29"));
     }
 
 
