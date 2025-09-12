@@ -22,11 +22,7 @@ public class Tool implements IBaseTool {
     String description;
     Map<String, AParameter> parameters;
     IToolMethod executeMethod;
-
-    @Override
-    public Class<? extends IServicePlugin> getServiceClass() {
-        return null;
-    }
+    Class<? extends IServicePlugin> serviceClass;
 
     public static Tool tool(String name, String description, IToolMethod executeMethod) {
         return Tool.builder()

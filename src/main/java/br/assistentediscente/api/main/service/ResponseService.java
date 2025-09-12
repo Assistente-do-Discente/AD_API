@@ -388,6 +388,7 @@ public class ResponseService extends Reflection{
                     .name(serviceObject.getName())
                     .description(serviceObject.getDescription())
                     .parameters(parameters)
+                    .serviceClass(serviceClass)
                     .build();
             tools.add(serviceTool);
         }

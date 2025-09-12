@@ -83,15 +83,15 @@ public class ResponseController {
     @PostMapping(value = "/generate-response/{toolName}",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    private ResponseEntity<?> doResponseByToolname(@AuthenticationPrincipal Jwt jwt,
+    private ResponseEntity<?> doResponseByToolName(@AuthenticationPrincipal Jwt jwt,
                                                    @RequestBody Map<String, String> params,
                                                    @PathVariable String toolName){
         return ResponseEntity.ok(responseService.doResponseByToolName(toolName, jwt.getSubject(), params));
     }
 
     @GetMapping(path = "/institutionTools")
-    private ResponseEntity<?> getAllInstitutionTools(){
-        return ResponseEntity.ok(responseService.getAllToolsPlugins("1148d2a3-0c30-4ee2-9a65-8bdfb3e8ac29"));
+    private ResponseEntity<?> getAllInstitutionTools(@AuthenticationPrincipal Jwt jwt){
+        return ResponseEntity.ok(responseService.getAllToolsPlugins(jwt.getSubject()));
     }
 
 

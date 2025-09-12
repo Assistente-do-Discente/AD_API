@@ -476,7 +476,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
     }
 
     public List<IBaseTool> getAllInformationToolsPlugins() {
-        return List.of(
+        return new ArrayList<>(List.of(
                 Tool.tool(
                         "getSchedule",
                         "Obter o horário de aulas",
@@ -511,15 +511,20 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 ),
                 Tool.tool(
                         "getAcademicData",
-                        "Obter dados sobre a integralização do estudante no curso",
+                        "Obter dados sobre a integralização do estudante no curso (é possivel obter a média geral do curso)",
                         this::getAcademicData
                 ),
                 Tool.tool(
                         "getStudentData",
                         "Obter dados sobre o estudante",
                         this::getStudentData
+                ),
+                Tool.tool(
+                        "getActiveDisciplinesWithAbsences",
+                        "Obter todas disciplinas ativas com o número de faltas",
+                        this::getActiveDisciplinesWithAbsences
                 )
-        );
+        ));
     }
 
 //    public List<IBaseTool> getAllInformationToolsPlugins() {
@@ -575,6 +580,13 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         Map<String, String> response = new HashMap<>();
         ObjectMapper mapper = new ObjectMapper();
         response.put("response", mapper.writeValueAsString(getStudentData()));
+        return response;
+    }
+
+    public Map<String, String> getActiveDisciplinesWithAbsences(Map<String, String> parameters) throws JsonProcessingException {
+        Map<String, String> response = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+        response.put("response", mapper.writeValueAsString(getActiveDisciplinesWithAbsences()));
         return response;
     }
 }
