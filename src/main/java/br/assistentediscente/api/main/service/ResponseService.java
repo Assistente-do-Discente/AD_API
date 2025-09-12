@@ -389,6 +389,7 @@ public class ResponseService extends Reflection{
                     .description(serviceObject.getDescription())
                     .parameters(parameters)
                     .serviceClass(serviceClass)
+                    .highConfirmation(true)
                     .build();
             tools.add(serviceTool);
         }

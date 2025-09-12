@@ -20,6 +20,7 @@ import java.util.Map;
 public class Tool implements IBaseTool {
     String name;
     String description;
+    Boolean highConfirmation;
     Map<String, AParameter> parameters;
     IToolMethod executeMethod;
     Class<? extends IServicePlugin> serviceClass;
@@ -29,6 +30,7 @@ public class Tool implements IBaseTool {
                 .name(name)
                 .description(description)
                 .executeMethod(executeMethod)
+                .highConfirmation(false)
                 .build();
     }
 
@@ -38,6 +40,7 @@ public class Tool implements IBaseTool {
                 .description(description)
                 .parameters(parameters)
                 .executeMethod(executeMethod)
+                .highConfirmation(false)
                 .build();
     }
 }

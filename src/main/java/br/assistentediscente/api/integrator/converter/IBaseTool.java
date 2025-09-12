@@ -10,6 +10,7 @@ import java.util.Map;
 public interface IBaseTool {
     String getName();
     String getDescription();
+    Boolean getHighConfirmation();
     Map<String, AParameter> getParameters();
 
     @JsonIgnore
