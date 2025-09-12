@@ -97,6 +97,16 @@ public class Reflection {
         }
     }
 
+    protected String invokeServicePlugin(IServicePlugin servicePlugin, IBaseInstitutionPlugin institutionPlugin, Map<String,String> parameters, IPlataformService plataformService){
+        try {
+            Set<ParameterValue> parameterValues = getParameterValues(servicePlugin, institutionPlugin, parameters);
+            return servicePlugin.doService(institutionPlugin, parameterValues, plataformService);
+        }catch (Exception e){
+            handleException(e, new ServiceCouldNotExecute());
+            return null;
+        }
+    }
+
     private Set<ParameterValue> getParameterValues(IServicePlugin service,
                                                     IBaseInstitutionPlugin institutionPlugin,
                                                     Map<String, String> parameterMap) {

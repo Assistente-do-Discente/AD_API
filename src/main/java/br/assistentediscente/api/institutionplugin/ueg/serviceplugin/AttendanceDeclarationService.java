@@ -20,6 +20,14 @@ import static br.assistentediscente.api.institutionplugin.ueg.enums.DocEnum.ATTE
 
 public class AttendanceDeclarationService implements IServicePlugin {
 
+    public String getName() {
+        return "generateAttendanceDeclaration";
+    }
+
+    public String getDescription() {
+        return "Serviço utilizado para gerar e enviar por email a declaração de frequência do estudante.";
+    }
+
     public List<String> getActivationName() {
         return List.of("gerar declaração de frequência",
                 "declaracao de frequencia",

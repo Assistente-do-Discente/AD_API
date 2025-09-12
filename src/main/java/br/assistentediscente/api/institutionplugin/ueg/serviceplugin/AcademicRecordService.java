@@ -20,6 +20,14 @@ import static br.assistentediscente.api.institutionplugin.ueg.enums.DocEnum.ACAD
 
 public class AcademicRecordService implements IServicePlugin {
 
+    public String getName() {
+        return "generateAcademicRecord";
+    }
+
+    public String getDescription() {
+        return "Serviço utilizado para gerar e enviar por email o histórico acadêmico do estudante.";
+    }
+
     public List<String> getActivationName() {
         return List.of("gerar histórico acadêmico", "historico academico",
                 "historico",
