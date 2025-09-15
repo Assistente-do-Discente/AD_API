@@ -48,6 +48,8 @@ import org.reflections.util.ClasspathHelper;
 import org.reflections.util.ConfigurationBuilder;
 import org.reflections.util.FilterBuilder;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -475,6 +477,27 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
 
     }
 
+    public String getCompExtHours() throws IntentNotSupportedException {
+        if (Objects.isNull(acuId)) getPersonId();
+
+        HttpGet httpGet = new HttpGet(DADOS_ATV_COMP_EXT + acuId);
+        try {
+            CloseableHttpResponse httpResponse = httpClient.execute(httpGet, localContext);
+            HttpEntity entity = httpResponse.getEntity();
+
+            if (responseOK(httpResponse)) {
+                return EntityUtils.toString(entity);
+            }else{
+                throw new InstitutionComunicationException("Não foi possivel se comunicar com o servidor da UEG," +
+                        " tente novamente mais tarde");
+            }
+
+        } catch (Throwable error) {
+            throw new InstitutionComunicationException("Não foi possivel se comunicar com o servidor da UEG," +
+                    "tente novamente mais tarde");
+        }
+    }
+
     public List<IBaseTool> getAllInformationToolsPlugins() {
         return new ArrayList<>(List.of(
                 Tool.tool(
@@ -506,8 +529,21 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 ),
                 Tool.tool(
                         "getGrades",
-                        "Obter as notas do estudante",
+                        "Obter as notas do estudante, nas disciplinas se tem o item 'mat_media' que representa a média final da matérias, mas na lista 'nota_list' é possivel ver a nota dos 2 bimestres a N1 (1º Avaliação ou 1 va) e N2 (2º Avaliação ou 2 va)",
                         this::getGrades
+                ),
+                Tool.tool(
+                        "calculateAverage",
+                        "Calcular qual nota mínima o aluno precisa tirar na 1ªVA ou na 2°Va ou para obter o resultado da média caso informado as 2 notas. Padrão UEG: média ponderada (1VA * 2 + 2VA * 3) / 5 e média mínima 60.",
+                        this::calculateAverage,
+                        Map.of(
+                                "nota1va", ParameterTool.numberParam(
+                                        "Nota obtida na 1ª VA (0 a 100)", ParameterType.OPTIONAL
+                                ),
+                                "nota2va", ParameterTool.numberParam(
+                                        "Nota obtida na 2ª VA (0 a 100)", ParameterType.OPTIONAL
+                                )
+                        )
                 ),
                 Tool.tool(
                         "getAcademicData",
@@ -523,37 +559,29 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                         "getActiveDisciplinesWithAbsences",
                         "Obter todas disciplinas ativas com o número de faltas",
                         this::getActiveDisciplinesWithAbsences
+                ),
+                Tool.tool(
+                        "getComplementaryHours",
+                        """
+                        Obter todas informações sobre as horas de atividades complementares que foram e que devem ser cumpridas, na parte 'AtividadeComplementar'
+                        possui 'ch_exigida' que representa a carga horária a ser cumprida e 'ch_cumprida' representa a carga horária cumprida.
+                        """,
+                        this::getCompExtHours
+                ),
+                Tool.tool(
+                        "getExtensionHours",
+                        """
+                        Obter todas informações sobre as horas de extensão que foram e que devem ser cumpridas, tendo em vista que as atividades se dividem
+                        em 2 categorias Atividades Curriculares de Extensão (ACE) e Componentes Curriculares de Extensão (CCE) a quantidade a cumprir estão
+                        representadas na parte 'GradeObrigatoria' sendo os itens 'mat_ace' e 'mat_cce' as compridas estão representadas por 'ace_cumprida'
+                        e 'cce_cumprida'. É possivel fazer também fazer o detalhamento das atividades de extensão apenas case for realmente necessário, sendo
+                        representado pela parte 'Extensao' com o nome das atividades e o item 'ch_qtde_cce' representado a quantidade de horas aprovadas para
+                        extensão
+                        """,
+                        this::getCompExtHours
                 )
         ));
     }
-
-//    public List<IBaseTool> getAllInformationToolsPlugins() {
-//        List<IBaseTool> tools = new ArrayList<>();
-//        Map<String, AParameter> parameters = new HashMap<>();
-//
-//        ParameterTool parameterTool = ParameterTool.builder().clazz(ClazzType.ENUM).type(ParameterType.MANDATORY).description("O dia da semana, como segunda-feira ou sábado").possibleValues(Arrays.stream(WeekDay.values()).map(WeekDay::getShortName).collect(Collectors.toList())).build();
-//        parameters.put("weekDay", parameterTool);
-//        Tool getScheduleByWeekDayTool = Tool.builder().name("getScheduleByWeekDay").description("Obter o horaráio de aulas do dia informado").parameters(parameters).executeMethod(this::getSchedules).build();
-//        tools.add(getScheduleByWeekDayTool);
-//
-//        Map<String, AParameter> parameters2 = new HashMap<>();
-//        ParameterTool parameterTool2 = ParameterTool.builder().clazz(ClazzType.STRING).type(ParameterType.MANDATORY).description("O nome da disciplina").build();
-//        parameters2.put("disiciplineName", parameterTool2);
-//        Tool getScheduleByDisciplineNameTool = Tool.builder().name("getScheduleByDisciplineName").description("Obter o horaráio de aula da disciplina informada").parameters(parameters2).executeMethod(this::getSchedules).build();
-//        tools.add(getScheduleByDisciplineNameTool);
-//
-//        Tool getGradesTool = Tool.builder().name("getGrades").description("Obter as notas do estudante").executeMethod(this::getGrades).build();
-//        tools.add(getGradesTool);
-//
-//        Tool getAcademicDataTool = Tool.builder().name("getAcademicData").description("Obter dados sobre a integralização do estudante no curso").executeMethod(this::getAcademicData).build();
-//        tools.add(getAcademicDataTool);
-//
-//        Tool getStudentDataTool = Tool.builder().name("getStudentData").description("Obter dados sobre o estudante").executeMethod(this::getStudentData).build();
-//
-//        tools.add(getStudentDataTool);
-//
-//        return tools;
-//    }
 
     public Map<String, String> getSchedules(Map<String, String> parameters) throws JsonProcessingException {
         Map<String, String> response = new HashMap<>();
@@ -587,6 +615,36 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         Map<String, String> response = new HashMap<>();
         ObjectMapper mapper = new ObjectMapper();
         response.put("response", mapper.writeValueAsString(getActiveDisciplinesWithAbsences()));
+        return response;
+    }
+
+    public Map<String, String> getCompExtHours(Map<String, String> parameters) throws JsonProcessingException {
+        Map<String, String> response = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+        response.put("response", mapper.writeValueAsString(getCompExtHours()));
+        return response;
+    }
+
+    public Map<String, String> calculateAverage(Map<String, String> parameters) throws JsonProcessingException {
+        Double nota1 = parameters.containsKey("nota1va") ? Double.parseDouble(parameters.get("nota1va")) : null;
+        Double nota2 = parameters.containsKey("nota2va") ? Double.parseDouble(parameters.get("nota2va")) : null;
+        Double resultado;
+
+        if (nota1 != null && nota2 != null) {
+            resultado = ((nota1*2) + (nota2*3)) / 5;
+        } else if (nota1 != null) {
+            resultado = (300 - (nota1*2)) / 3;
+        } else {
+            resultado = (300 - (nota2*3)) / 2;
+        }
+
+        Map<String, String> response = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+
+        Map<String, Double> result = new HashMap<>();
+        result.put("resultado", BigDecimal.valueOf(resultado).setScale(2, RoundingMode.HALF_EVEN).doubleValue());
+
+        response.put("response", mapper.writeValueAsString(result));
         return response;
     }
 }
