@@ -37,6 +37,14 @@ public class ParameterTool implements AParameter {
         return null;
     }
 
+    public static ParameterTool numberParam(String description, ParameterType type) {
+        return ParameterTool.builder()
+                .clazz(ClazzType.NUMBER)
+                .type(type)
+                .description(description)
+                .build();
+    }
+
     public static ParameterTool stringParam(String description, ParameterType type) {
         return ParameterTool.builder()
                 .clazz(ClazzType.STRING)
