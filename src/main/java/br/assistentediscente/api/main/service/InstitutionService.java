@@ -7,6 +7,7 @@ import br.assistentediscente.api.main.repository.InstitutionRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -16,6 +17,10 @@ public class InstitutionService {
 
     public InstitutionService(InstitutionRepository institutionRepository) {
         this.institutionRepository = institutionRepository;
+    }
+
+    public List<Institution> getAllInstitution() {
+        return institutionRepository.findAll();
     }
 
     public Institution getInstitutionByInstitutionName(String institutionName) {

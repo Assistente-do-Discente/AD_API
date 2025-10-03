@@ -24,23 +24,28 @@ public class Tool implements IBaseTool {
     Map<String, AParameter> parameters;
     IToolMethod executeMethod;
     Class<? extends IServicePlugin> serviceClass;
+    Boolean authenticationRequired;
 
     public static Tool tool(String name, String description, IToolMethod executeMethod) {
-        return Tool.builder()
-                .name(name)
-                .description(description)
-                .executeMethod(executeMethod)
-                .highConfirmation(false)
-                .build();
+        return tool(name, description, true, executeMethod, null);
+    }
+
+    public static Tool tool(String name, String description, boolean authenticationRequired, IToolMethod executeMethod) {
+        return tool(name, description, authenticationRequired, executeMethod, null);
     }
 
     public static Tool tool(String name, String description, IToolMethod executeMethod, Map<String, AParameter> parameters) {
+        return tool(name, description, true, executeMethod, parameters);
+    }
+
+    public static Tool tool(String name, String description, boolean authenticationRequired, IToolMethod executeMethod, Map<String, AParameter> parameters) {
         return Tool.builder()
                 .name(name)
                 .description(description)
                 .parameters(parameters)
                 .executeMethod(executeMethod)
                 .highConfirmation(false)
+                .authenticationRequired(authenticationRequired)
                 .build();
     }
 }

@@ -327,6 +327,14 @@ public class ResponseService extends Reflection{
     }
 
     public Object doResponseByToolName(String toolName, String externalID, Map<String, String> parameters) {
+        if (externalID != null) {
+            return responseToolAuthenticated(toolName, externalID, parameters);
+        } else {
+            return responseToolFree(toolName, parameters);
+        }
+    }
+
+    public Object responseToolAuthenticated(String toolName, String externalID, Map<String, String> parameters) {
         IStudent student = studentService.findByExternalKey(UUID.fromString(externalID));
         try {
             IBaseInstitutionPlugin institutionPlugin = getInstitutionPlugin(institutionPackage, student);
@@ -343,6 +351,20 @@ public class ResponseService extends Reflection{
                 String result = invokeServicePlugin(serviceObject, institutionPlugin, parameters, plataformService);
                 return new HashMap<String, String>(){{put("result", result);}};
             } else {
+                return invokeResponseMethodByTool(toolForExecute, parameters);
+            }
+        }catch (Exception exception){
+            throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
+        }
+    }
+
+    public Object responseToolFree(String toolName, Map<String, String> parameters) {
+        try {
+            List<IBaseTool> toolsList = getInformationTools();
+            IBaseTool toolForExecute = toolsList.stream().filter(tool -> tool.getName().equals(toolName)).findFirst().orElse(null);
+            if (toolForExecute == null) {
+                throw new RuntimeException("Tool not found");
+            }else {
                 return invokeResponseMethodByTool(toolForExecute, parameters);
             }
         }catch (Exception exception){
@@ -395,4 +417,18 @@ public class ResponseService extends Reflection{
         }
         return tools;
     }
+
+    public List<IBaseTool> getInformationTools(){
+        try {
+            return baseInstitutionService.getAllInstitution().stream()
+                    .map(inst -> getInstitutionPlugin(institutionPackage, inst))
+                    .flatMap(plugin -> plugin.getAllInformationToolsPlugins().stream())
+                    .filter(tool -> !tool.getAuthenticationRequired())
+                    .toList();
+        }catch (Exception exception){
+            exception.printStackTrace();
+            throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
+        }
+    }
+
 }
