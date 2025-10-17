@@ -57,6 +57,10 @@ public class Student implements IStudent {
             fetch = FetchType.EAGER)
     private Set<AccessData> accessData;
 
+    public Student(Long userKey){
+        this.userKey = userKey;
+    }
+
     public Long getId(){
         return userKey;
     }

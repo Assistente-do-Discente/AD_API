@@ -3,6 +3,7 @@ package br.assistentediscente.api.main.service;
 import br.assistentediscente.api.institutionplugin.ueg.converter.ParameterTool;
 import br.assistentediscente.api.institutionplugin.ueg.converter.Tool;
 import br.assistentediscente.api.integrator.converter.IBaseTool;
+import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.enums.WeekDay;
 import br.assistentediscente.api.integrator.exceptions.ai.DisciplineNameNotFoundException;
 import br.assistentediscente.api.integrator.exceptions.intent.IntentNotSupportedException;
@@ -56,15 +57,16 @@ public class ResponseService extends Reflection{
     @Value("${institution.package}")
     private String institutionPackage;
     private final IPlataformService plataformService;
+    private final PlannerService plannerService;
 
-
-    public ResponseService(MessageSource messageSource, InstitutionService baseInstitutionService,
+    public ResponseService(MessageSource messageSource, InstitutionService baseInstitutionService, PlannerService plannerService,
                            StudentService studentService, AIService aiService, PlataformServiceImpl plataformService) {
         this.messageSource = messageSource;
         this.baseInstitutionService = baseInstitutionService;
         this.studentService = studentService;
         this.aiService = aiService;
         this.plataformService = plataformService;
+        this.plannerService = plannerService;
     }
 
     /**
@@ -351,6 +353,7 @@ public class ResponseService extends Reflection{
                 String result = invokeServicePlugin(serviceObject, institutionPlugin, parameters, plataformService);
                 return new HashMap<String, String>(){{put("result", result);}};
             } else {
+                parameters.put("studentId", student.getId().toString());
                 return invokeResponseMethodByTool(toolForExecute, parameters);
             }
         }catch (Exception exception){
@@ -387,8 +390,11 @@ public class ResponseService extends Reflection{
         try {
             IBaseInstitutionPlugin institutionPlugin = getInstitutionPlugin(institutionPackage, student);
 
-            return Stream.concat(institutionPlugin.getAllInformationToolsPlugins().stream(),
+            List<IBaseTool> tools = Stream.concat(institutionPlugin.getAllInformationToolsPlugins().stream(),
                             this.getAllServiceToolsPlugins(institutionPlugin).stream()).collect(Collectors.toCollection(ArrayList::new));
+            tools.addAll(this.getToolsPlanner());
+
+            return tools;
         }catch (Exception exception){
             exception.printStackTrace();
             throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
@@ -431,4 +437,80 @@ public class ResponseService extends Reflection{
         }
     }
 
+    public List<IBaseTool> getToolsPlanner() {
+        return new ArrayList<>(List.of(
+                Tool.tool(
+                        "createPlanner",
+                        "Ferramenta para criar uma agenda que possa adicionar tarefas/lembretes",
+                        plannerService::create,
+                        Map.of(
+                                "nome", ParameterTool.stringParam(
+                                        "Nome para a agenda", ParameterType.MANDATORY
+                                ),
+                                "description", ParameterTool.stringParam(
+                                        "Descrição para a agenda", ParameterType.OPTIONAL
+                                )
+                        )
+                ),
+                Tool.tool(
+                        "getPlanners",
+                        "Ferramenta para buscar todas as agendas criadas",
+                        plannerService::getAll
+                ),
+                Tool.tool(
+                        "deletePlanner",
+                        "Ferramenta para excluir a agenda pelo id e suas tarefas",
+                        plannerService::delete,
+                        Map.of(
+                                "plannerId", ParameterTool.numberParam(
+                                        "Id da agenda a ser apagada", ParameterType.MANDATORY
+                                )
+                        )
+                ),
+                Tool.tool(
+                        "createTask",
+                        "Ferramenta para criar tarefas/lembretes em uma agenda",
+                        plannerService::createTask,
+                        Map.of(
+                                "title", ParameterTool.stringParam(
+                                        "Título para a tarefa/lembrete", ParameterType.MANDATORY
+                                ),
+                                "description", ParameterTool.stringParam(
+                                        "Descrição para a tarefa/lembrete", ParameterType.OPTIONAL
+                                ),
+                                "date", ParameterTool.stringParam(
+                                        "Data e hora para a tarefa/lembrete no formato AAAA-MM-DDTHH:MM", ParameterType.MANDATORY
+                                ),
+                                "plannerId", ParameterTool.numberParam(
+                                        "Id do planner que será adicionado a tarefa/lembrete", ParameterType.MANDATORY
+                                )
+                        )
+                ),
+                Tool.tool(
+                        "getTasks",
+                        "Ferramenta para buscar todas as tarefas/lembretes criadas",
+                        plannerService::getAllTask
+                ),
+                Tool.tool(
+                        "deleteTask",
+                        "Ferramenta para excluir uma tarefa/lembrete pelo id",
+                        plannerService::deleteTask,
+                        Map.of(
+                                "plannerId", ParameterTool.numberParam(
+                                        "Id da agenda a ser apagada", ParameterType.MANDATORY
+                                )
+                        )
+                ),
+                Tool.tool(
+                        "getTasksByDate",
+                        "Ferramenta para buscar todas as tarefas/lembretes de uma data específica",
+                        plannerService::getTasksByDate,
+                        Map.of(
+                                "date", ParameterTool.stringParam(
+                                        "Data e hora para buscar sa tarefa/lembrete no formato AAAA-MM-DD", ParameterType.MANDATORY
+                                )
+                        )
+                )
+        ));
+    }
 }
