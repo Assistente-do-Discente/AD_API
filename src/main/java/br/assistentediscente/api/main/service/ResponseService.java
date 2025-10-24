@@ -459,10 +459,10 @@ public class ResponseService extends Reflection{
                         plannerService::create,
                         Map.of(
                                 "nome", ParameterTool.stringParam(
-                                        "Nome para a agenda", ParameterType.MANDATORY
+                                        "Nome para a agenda", ParameterType.MANDATORY, null, null
                                 ),
                                 "description", ParameterTool.stringParam(
-                                        "Descrição para a agenda", ParameterType.OPTIONAL
+                                        "Descrição para a agenda", ParameterType.OPTIONAL, null, null
                                 )
                         )
                 ),
@@ -477,7 +477,7 @@ public class ResponseService extends Reflection{
                         plannerService::delete,
                         Map.of(
                                 "plannerId", ParameterTool.numberParam(
-                                        "Id da agenda a ser apagada", ParameterType.MANDATORY
+                                        "Id da agenda a ser apagada", ParameterType.MANDATORY, null, null
                                 )
                         )
                 ),
@@ -487,16 +487,16 @@ public class ResponseService extends Reflection{
                         plannerService::createTask,
                         Map.of(
                                 "title", ParameterTool.stringParam(
-                                        "Título para a tarefa/lembrete", ParameterType.MANDATORY
+                                        "Título para a tarefa/lembrete", ParameterType.MANDATORY, null, null
                                 ),
                                 "description", ParameterTool.stringParam(
-                                        "Descrição para a tarefa/lembrete", ParameterType.OPTIONAL
+                                        "Descrição para a tarefa/lembrete", ParameterType.OPTIONAL, null, null
                                 ),
                                 "date", ParameterTool.stringParam(
-                                        "Data e hora para a tarefa/lembrete no formato AAAA-MM-DDTHH:MM", ParameterType.MANDATORY
+                                        "Data e hora para a tarefa/lembrete no formato AAAA-MM-DDTHH:MM", ParameterType.MANDATORY, null, null
                                 ),
                                 "plannerId", ParameterTool.numberParam(
-                                        "Id do planner que será adicionado a tarefa/lembrete", ParameterType.MANDATORY
+                                        "Id do planner que será adicionado a tarefa/lembrete", ParameterType.MANDATORY, null, null
                                 )
                         )
                 ),
@@ -511,7 +511,7 @@ public class ResponseService extends Reflection{
                         plannerService::deleteTask,
                         Map.of(
                                 "plannerId", ParameterTool.numberParam(
-                                        "Id da agenda a ser apagada", ParameterType.MANDATORY
+                                        "Id da agenda a ser apagada", ParameterType.MANDATORY, null, null
                                 )
                         )
                 ),
@@ -521,7 +521,7 @@ public class ResponseService extends Reflection{
                         plannerService::getTasksByDate,
                         Map.of(
                                 "date", ParameterTool.stringParam(
-                                        "Data e hora para buscar sa tarefa/lembrete no formato AAAA-MM-DD", ParameterType.MANDATORY
+                                        "Data e hora para buscar sa tarefa/lembrete no formato AAAA-MM-DD", ParameterType.MANDATORY, null, null
                                 )
                         )
                 )
