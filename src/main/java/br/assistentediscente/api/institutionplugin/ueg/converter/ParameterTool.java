@@ -3,7 +3,10 @@ package br.assistentediscente.api.institutionplugin.ueg.converter;
 import br.assistentediscente.api.integrator.enums.ClazzType;
 import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.institutions.IBaseInstitutionPlugin;
+import br.assistentediscente.api.integrator.institutions.info.INormalizationMethod;
+import br.assistentediscente.api.integrator.institutions.info.IPossibleValuesMethod;
 import br.assistentediscente.api.integrator.serviceplugin.parameters.AParameter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 
@@ -22,6 +25,11 @@ public class ParameterTool implements AParameter {
     String description;
     List<String> possibleValues;
 
+    @JsonIgnore
+    INormalizationMethod normalizationMethod;
+    @JsonIgnore
+    IPossibleValuesMethod possibleValuesMethod;
+
     @Override
     public Object getDefaultValue() {
         return null;
@@ -37,19 +45,23 @@ public class ParameterTool implements AParameter {
         return null;
     }
 
-    public static ParameterTool numberParam(String description, ParameterType type) {
+    public static ParameterTool numberParam(String description, ParameterType type, INormalizationMethod normalizationMethod, IPossibleValuesMethod possibleValuesMethod) {
         return ParameterTool.builder()
                 .clazz(ClazzType.NUMBER)
                 .type(type)
                 .description(description)
+                .normalizationMethod(normalizationMethod)
+                .possibleValuesMethod(possibleValuesMethod)
                 .build();
     }
 
-    public static ParameterTool stringParam(String description, ParameterType type) {
+    public static ParameterTool stringParam(String description, ParameterType type, INormalizationMethod normalizationMethod, IPossibleValuesMethod possibleValuesMethod) {
         return ParameterTool.builder()
                 .clazz(ClazzType.STRING)
                 .type(type)
                 .description(description)
+                .normalizationMethod(normalizationMethod)
+                .possibleValuesMethod(possibleValuesMethod)
                 .build();
     }
 

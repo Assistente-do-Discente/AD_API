@@ -35,6 +35,11 @@ public class MaritalkApi extends AIApi {
         return sendMessageAndGetApiResponse(message);
     }
 
+    @Override
+    public String guessItemFromItems(String item, List<String> items) {
+        String message = getItemsMessage(item, items);
+        return sendMessageAndGetApiResponse(message);
+    }
 
     private String sendMessageAndGetApiResponse(String message) {
         String params = aiApiData.getParamsApi().replace("?", message);

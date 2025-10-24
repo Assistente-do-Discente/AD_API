@@ -48,4 +48,16 @@ public abstract class AIApi implements IAIApi{
 
         return stringBuilder.toString().trim();
     }
+
+    protected String getItemsMessage(String item, List<String> items) {
+        StringBuilder stringBuilder = new StringBuilder();
+        stringBuilder.append(startItemQuestion);
+        for (String itemTemp : items) {
+            stringBuilder.append(itemTemp);
+            stringBuilder.append(", ");
+        }
+        stringBuilder.replace(stringBuilder.lastIndexOf(","), stringBuilder.length(), ".");
+        stringBuilder.append(endItemQuestion.replace("?", item.toUpperCase().trim()));
+        return stringBuilder.toString().trim();
+    }
 }

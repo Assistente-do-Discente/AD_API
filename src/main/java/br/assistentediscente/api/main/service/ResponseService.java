@@ -375,6 +375,20 @@ public class ResponseService extends Reflection{
     private Object invokeResponseMethodByTool(IBaseTool tool, Map<String, String> parameters) throws Exception {
         try {
             if (tool == null) throw new RuntimeException("Tool not found");
+
+            if (tool.getParameters() != null && !tool.getParameters().isEmpty()) {
+                for (String keyParameter: tool.getParameters().keySet()) {
+                    AParameter parameter = tool.getParameters().get(keyParameter);
+                    if (parameter.getNormalizationMethod() != null) {
+                        parameters.put(keyParameter, parameter.getNormalizationMethod().normalize(parameters.get(keyParameter)));
+                    }
+                    if (parameter.getPossibleValuesMethod() != null) {
+                        String itemFound = this.aiService.getItemInList(parameters.get(keyParameter), parameter.getPossibleValuesMethod().getPossibleValues());
+                        parameters.put(keyParameter, itemFound);
+                    }
+                }
+            }
+
             return tool.getExecuteMethod().execute(parameters);
         } catch (Exception e) {
             handleException(e, new RuntimeException("Method "+ tool.getName() + " not found"));

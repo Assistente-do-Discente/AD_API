@@ -21,8 +21,6 @@ import br.assistentediscente.api.integrator.institutions.KeyValue;
 import br.assistentediscente.api.integrator.institutions.info.*;
 import br.assistentediscente.api.integrator.serviceplugin.service.IServicePlugin;
 import br.assistentediscente.api.main.model.IStudent;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import lombok.Getter;
@@ -51,8 +49,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
-
-import static br.assistentediscente.api.main.aiapi.IAIApi.*;
 
 @Getter
 public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
@@ -296,6 +292,11 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         }
     }
 
+    public List<IDisciplineGrade> getGradeByDisciplineName(String disciplineToGetGrade) {
+        List<IDisciplineGrade> disciplineGrades = this.getGrades();
+        return disciplineGrades.stream().filter(discipline -> disciplineToGetGrade.equalsIgnoreCase(discipline.getDisciplineName().toUpperCase())).toList();
+    }
+
     @Override
     public IAcademicData getAcademicData() throws IntentNotSupportedException, InstitutionComunicationException {
         HttpGet httpGet = new HttpGet(DADOS_ACADEMICOS);
@@ -524,7 +525,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                         this::getSchedules,
                         Map.of(
                                 "disciplineName",
-                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY)
+                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY, null, this::getDisciplineNames)
                         )
                 ),
                 Tool.tool(
@@ -538,7 +539,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                         this::getGrades,
                         Map.of(
                                 "disciplineName",
-                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY)
+                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY, null, this::getDisciplineNames)
                         )
                 ),
                 Tool.tool(
@@ -547,10 +548,10 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                         this::calculateAverage,
                         Map.of(
                                 "nota1va", ParameterTool.numberParam(
-                                        "Nota obtida na 1ª VA (0 a 100)", ParameterType.OPTIONAL
+                                        "Nota obtida na 1ª VA (0 a 100)", ParameterType.OPTIONAL, null, null
                                 ),
                                 "nota2va", ParameterTool.numberParam(
-                                        "Nota obtida na 2ª VA (0 a 100)", ParameterType.OPTIONAL
+                                        "Nota obtida na 2ª VA (0 a 100)", ParameterType.OPTIONAL, null, null
                                 )
                         )
                 ),
@@ -604,98 +605,51 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         ));
     }
 
-    public Map<String, String> getSchedules(Map<String, String> parameters) throws JsonProcessingException {
-        String instruction = buildInstruction(parameters);
-        String json = new ObjectMapper().writeValueAsString(getWeekSchedule());
+    public Object getSchedules(Map<String, String> parameters) {
+        List<IDisciplineSchedule> disciplineScheduleList;
 
-        StringBuilder response = new StringBuilder(ruleScheduleGroupingQuestion)
-                .append(instruction)
-                .append("\n\n")
-                .append(json);
-
-        return Map.of("response", response.toString());
-    }
-
-    public Map<String, String> getGrades(Map<String, String> parameters) throws JsonProcessingException {
-        String instruction = buildInstruction(parameters);
-        String json = new ObjectMapper().writeValueAsString(getGrades());
-
-        StringBuilder response = new StringBuilder(ruleGradesQuestion)
-                .append(instruction)
-                .append("\n\n")
-                .append(json);
-
-        return Map.of("response", response.toString());
-    }
-
-    public Map<String, String> getAcademicData(Map<String, String> parameters) throws JsonProcessingException {
-        String instruction = buildInstruction(parameters);
-        String json = new ObjectMapper().writeValueAsString(getAcademicData());
-
-        StringBuilder response = new StringBuilder()
-                .append(instruction)
-                .append("\n\n")
-                .append(json);
-
-        return Map.of("response", response.toString());
-    }
-
-    public Map<String, String> getStudentData(Map<String, String> parameters) throws JsonProcessingException {
-        String instruction = buildInstruction(parameters);
-        String json = new ObjectMapper().writeValueAsString(getStudentData());
-
-        StringBuilder response = new StringBuilder()
-                .append(instruction)
-                .append("\n\n")
-                .append(json);
-
-        return Map.of("response", response.toString());
-    }
-
-    public Map<String, String> getActiveDisciplinesWithAbsences(Map<String, String> parameters) throws JsonProcessingException {
-        String instruction = buildInstruction(parameters);
-        String json = new ObjectMapper().writeValueAsString(getActiveDisciplinesWithAbsences());
-
-        StringBuilder response = new StringBuilder()
-                .append(instruction)
-                .append("\n\n")
-                .append(json);
-
-        return Map.of("response", response.toString());
-    }
-
-    public Map<String, String> getCompExtHours(Map<String, String> parameters) throws JsonProcessingException {
-        String instruction = buildInstruction(parameters);
-        String json = new ObjectMapper().writeValueAsString(getCompExtHours());
-
-        StringBuilder response = new StringBuilder()
-                .append(instruction)
-                .append("\n\n")
-                .append(json);
-
-        return Map.of("response", response.toString());
-    }
-
-    private String buildInstruction(Map<String, String> parameters) {
-        if (parameters == null || parameters.isEmpty()) return "";
-
-        String weekDay = trimOrEmpty(parameters.get("weekDay"));
-        String discipline = trimOrEmpty(parameters.get("disciplineName"));
-
-        StringBuilder sb = new StringBuilder();
-        if (!weekDay.isEmpty()) {
-            sb.append('\n').append(weekdayRecognition).append(' ').append(weekDay);
+        if (parameters.containsKey("weekDay")) {
+            disciplineScheduleList = this.getScheduleByWeekDay(WeekDay.valueOf(parameters.get("weekDay")));
+        } else if (parameters.containsKey("disciplineName")) {
+            disciplineScheduleList = this.getScheduleByDisciplineName(parameters.get("disciplineName"));
+        } else {
+            disciplineScheduleList = this.getWeekSchedule();
         }
-        if (!discipline.isEmpty()) {
-            sb.append('\n').append(nameRecognitionOfDiscipline).append(' ').append(discipline);
-        }
-        return sb.toString();
-    }
-    private static String trimOrEmpty(String s) {
-        return s == null ? "" : s.trim();
+
+        return disciplineScheduleList;
     }
 
-    public Map<String, String> calculateAverage(Map<String, String> parameters) throws JsonProcessingException {
+    public Object getGrades(Map<String, String> parameters) {
+        List<IDisciplineGrade> disciplineGrades;
+
+        if (parameters.containsKey("semester")) {
+            disciplineGrades = this.getGradesBySemester(parameters.get("semester"));
+        } else if (parameters.containsKey("disciplineName")) {
+            disciplineGrades = this.getGradeByDisciplineName(parameters.get("disciplineName"));
+        } else {
+            disciplineGrades = this.getGrades();
+        }
+
+        return disciplineGrades;
+    }
+
+    public Object getAcademicData(Map<String, String> parameters) {
+        return getAcademicData();
+    }
+
+    public Object getStudentData(Map<String, String> parameters) {
+        return getStudentData();
+    }
+
+    public Object getActiveDisciplinesWithAbsences(Map<String, String> parameters) {
+       return getActiveDisciplinesWithAbsences();
+    }
+
+    public Object getCompExtHours(Map<String, String> parameters) {
+        return getCompExtHours();
+    }
+
+    public Object calculateAverage(Map<String, String> parameters) {
         Double nota1 = parameters.containsKey("nota1va") ? Double.parseDouble(parameters.get("nota1va")) : null;
         Double nota2 = parameters.containsKey("nota2va") ? Double.parseDouble(parameters.get("nota2va")) : null;
         Double resultado;
@@ -708,19 +662,11 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
             resultado = (300 - (nota2*3)) / 2;
         }
 
-        Map<String, String> response = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
-
-        Map<String, Double> result = new HashMap<>();
-        result.put("resultado", BigDecimal.valueOf(resultado).setScale(2, RoundingMode.HALF_EVEN).doubleValue());
-
-        response.put("response", mapper.writeValueAsString(result));
-        return response;
+        return BigDecimal.valueOf(resultado).setScale(2, RoundingMode.HALF_EVEN).doubleValue();
     }
 
-    public Map<String, String> getContactUeg(Map<String, String> parameters) throws JsonProcessingException {
-        Map<String, String> response = new HashMap<>();
-        response.put("response", """
+    public Object getContactUeg(Map<String, String> parameters) {
+        return """
                 Contatos institucionais da UEG:
                 
                  Número geral: (62) 3328-1433
@@ -748,18 +694,25 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 
                 Secretaria do Campus Central:
                  E-mail: secretaria.campuscentral@ueg.br
-                """);
-        return response;
+                """;
     }
 
-    public Map<String, String> getAboutUeg(Map<String, String> parameters) throws JsonProcessingException {
-        Map<String, String> response = new HashMap<>();
-        response.put("response", """
+    public Object getAboutUeg(Map<String, String> parameters) {
+        return """
                 A Universidade Estadual de Goiás (UEG) é uma universidade pública multicampi do Estado de Goiás, criada pela Lei Estadual 13.456, de 16 de abril de 1999.
                 Nos termos do seu Estatuto, aprovado pelo Decreto Estadual nº 9.593, de 17 de janeiro de 2020 e do Regimento Geral aprovado por seu Conselho Universitário, a UEG é uma instituição de ensino, pesquisa e extensão com finalidade científica e tecnológica, de natureza cultural e educacional, com caráter público, gratuito e laico. Trata-se de uma autarquia do poder executivo do Estado de Goiás, com autonomia didático-científica, administrativa e de gestão financeira e patrimonial, nos termos do Artigo 207 da Constituição da República Federativa do Brasil, do Artigo 161 da Constituição do Estado de Goiás e da Lei Estadual nº 18.971, de 23 de julho de 2015. Rege-se por seu Estatuto, seu Regimento Geral e por suas normas complementares.
                 A UEG possui sede no município de Anápolis (GO) e alcance acadêmico organizado em oito regiões do estado, a partir de Câmpus e Unidades Universitárias (UnU) presenciais, assim como de Polos de Educação a Distância (EaD). Esta presença alcança todas as microrregiões de Goiás definidas pelo Instituto Brasileiro de Geografia e Estatística (IBGE), atribuindo à UEG, como única universidade pública estadual de Goiás, perfil e função estratégica para a interiorização do acesso, das condições, dos processos e dos resultados da educação superior pública, do desenvolvimento científico e tecnológico e da inovação que ele promove desde o âmbito local nos municípios.
                 No limiar da celebração do seu jubileu de prata, estas características alicerçam o perfil da UEG como Instituição Pública Estadual de Educação Superior, Ciência e Tecnologia, dedicada a alcançar e responder, local e regionalmente, às demandas de formação de pessoal de nível superior nos municípios goianos para o seu desenvolvimento.
-                """);
-        return response;
+                """;
+    }
+
+    private List<String> getDisciplineNames() {
+        List<String> disciplineNames = new ArrayList<>();
+
+        List<IDisciplineGrade> disciplineGrades = this.getGrades();
+        for (IDisciplineGrade dg : disciplineGrades) {
+            disciplineNames.add(dg.getDisciplineName());
+        }
+        return disciplineNames;
     }
 }

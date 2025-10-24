@@ -6,5 +6,5 @@ import java.util.Map;
 
 @FunctionalInterface
 public interface IToolMethod {
-    Map<String, String> execute(Map<String, String> parameters) throws JsonProcessingException;
+    Object execute(Map<String, String> parameters) throws JsonProcessingException;
 }
