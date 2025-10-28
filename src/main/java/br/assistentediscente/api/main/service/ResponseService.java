@@ -3,12 +3,13 @@ package br.assistentediscente.api.main.service;
 import br.assistentediscente.api.institutionplugin.ueg.converter.ParameterTool;
 import br.assistentediscente.api.institutionplugin.ueg.converter.Tool;
 import br.assistentediscente.api.integrator.converter.IBaseTool;
-import br.assistentediscente.api.integrator.enums.ParameterType;
+import br.assistentediscente.api.integrator.converter.IResponseTool;
 import br.assistentediscente.api.integrator.enums.WeekDay;
 import br.assistentediscente.api.integrator.exceptions.ai.DisciplineNameNotFoundException;
 import br.assistentediscente.api.integrator.exceptions.intent.IntentNotSupportedException;
 import br.assistentediscente.api.integrator.exceptions.intent.ScheduleWeekEmptyOrNotFoundException;
 import br.assistentediscente.api.integrator.exceptions.param.ParamNotFoundException;
+import br.assistentediscente.api.integrator.exceptions.serviceplugin.ParameterTypeNotSupported;
 import br.assistentediscente.api.integrator.exceptions.student.StudentNotAuthenticatedException;
 import br.assistentediscente.api.integrator.institutions.IBaseInstitutionPlugin;
 import br.assistentediscente.api.integrator.institutions.KeyValue;
@@ -21,6 +22,7 @@ import br.assistentediscente.api.integrator.serviceplugin.parameters.AParameter;
 import br.assistentediscente.api.integrator.serviceplugin.service.IServicePlugin;
 import br.assistentediscente.api.main.dto.AutenticationResponse;
 import br.assistentediscente.api.main.dto.InstitutionLoginFieldsDTO;
+import br.assistentediscente.api.main.dto.ResponseToolDTO;
 import br.assistentediscente.api.main.dto.SkillResponse;
 import br.assistentediscente.api.main.formatter.absence.TotalAbsencesByDisciplineFormatter;
 import br.assistentediscente.api.main.formatter.available.AvailableActionsFormatter;
@@ -328,69 +330,61 @@ public class ResponseService extends Reflection{
         }
     }
 
-    public Object doResponseByToolName(String toolName, String externalID, Map<String, String> parameters) {
+    public IResponseTool doResponseByToolName(String toolName, String externalID, Map<String, String> parameters) {
         if (externalID != null) {
             return responseToolAuthenticated(toolName, externalID, parameters);
         } else {
-            return responseToolFree(toolName, parameters);
+            return responseToolFreeAccess(toolName, parameters);
         }
     }
 
-    public Object responseToolAuthenticated(String toolName, String externalID, Map<String, String> parameters) {
+    public IResponseTool responseToolAuthenticated(String toolName, String externalID, Map<String, String> parameters) {
         IStudent student = studentService.findByExternalKey(UUID.fromString(externalID));
         try {
             IBaseInstitutionPlugin institutionPlugin = getInstitutionPlugin(institutionPackage, student);
 
             List<IBaseTool> toolsList = institutionPlugin.getAllInformationToolsPlugins();
             toolsList.addAll(this.getAllServiceToolsPlugins(institutionPlugin));
+            toolsList.addAll(plannerService.getToolsPlanner());
 
             IBaseTool toolForExecute = toolsList.stream().filter(tool -> tool.getName().equals(toolName)).findFirst().orElse(null);
 
             if (toolForExecute == null) {
                 throw new RuntimeException("Tool not found");
+                
             } else if (toolForExecute.getServiceClass() != null) {
+                this.mountParameters(toolForExecute, parameters, institutionPlugin);
                 IServicePlugin serviceObject = toolForExecute.getServiceClass().getDeclaredConstructor().newInstance();
                 String result = invokeServicePlugin(serviceObject, institutionPlugin, parameters, plataformService);
-                return new HashMap<String, String>(){{put("result", result);}};
+                return new ResponseToolDTO("Serviço ativado e concluído com sucesso!", result);
+                
             } else {
-                parameters.put("studentId", student.getId().toString());
-                return invokeResponseMethodByTool(toolForExecute, parameters);
+                return invokeResponseMethodByTool(toolForExecute, parameters, institutionPlugin);
+                
             }
         }catch (Exception exception){
             throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
         }
     }
 
-    public Object responseToolFree(String toolName, Map<String, String> parameters) {
+    public IResponseTool responseToolFreeAccess(String toolName, Map<String, String> parameters) {
         try {
             List<IBaseTool> toolsList = getInformationTools();
             IBaseTool toolForExecute = toolsList.stream().filter(tool -> tool.getName().equals(toolName)).findFirst().orElse(null);
+            
             if (toolForExecute == null) {
                 throw new RuntimeException("Tool not found");
             }else {
-                return invokeResponseMethodByTool(toolForExecute, parameters);
+                return invokeResponseMethodByTool(toolForExecute, parameters, null);
             }
         }catch (Exception exception){
             throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
         }
     }
 
-    private Object invokeResponseMethodByTool(IBaseTool tool, Map<String, String> parameters) throws Exception {
+    private IResponseTool invokeResponseMethodByTool(IBaseTool tool, Map<String, String> parameters, IBaseInstitutionPlugin institutionPlugin) throws Exception {
         try {
-            if (tool == null) throw new RuntimeException("Tool not found");
-
-            if (tool.getParameters() != null && !tool.getParameters().isEmpty()) {
-                for (String keyParameter: tool.getParameters().keySet()) {
-                    AParameter parameter = tool.getParameters().get(keyParameter);
-                    if (parameter.getNormalizationMethod() != null) {
-                        parameters.put(keyParameter, parameter.getNormalizationMethod().normalize(parameters.get(keyParameter)));
-                    }
-                    if (parameter.getPossibleValuesMethod() != null) {
-                        String itemFound = this.aiService.getItemInList(parameters.get(keyParameter), parameter.getPossibleValuesMethod().getPossibleValues());
-                        parameters.put(keyParameter, itemFound);
-                    }
-                }
-            }
+            this.mountParameters(tool, parameters, institutionPlugin);
 
             return tool.getExecuteMethod().execute(parameters);
         } catch (Exception e) {
@@ -399,14 +393,45 @@ public class ResponseService extends Reflection{
         return null;
     }
 
+    private void mountParameters(IBaseTool tool, Map<String, String> parameters, IBaseInstitutionPlugin institutionPlugin) {
+        if (tool.getParameters() != null && !tool.getParameters().isEmpty()) {
+            for (String keyParameter: tool.getParameters().keySet()) {
+                AParameter parameter = tool.getParameters().get(keyParameter);
+                switch (parameter.getType()) {
+                    case AUTO -> {
+                        if (institutionPlugin != null && parameter.getValueFromInstitution(institutionPlugin) instanceof String) {
+                            parameters.put(keyParameter, parameter.getValueFromInstitution(institutionPlugin).toString());
+                        } else if (parameter.getAutoValueParamMethod() != null){
+                            parameters.put(keyParameter, parameter.getAutoValueParamMethod().getAutoValue());
+                        }
+                    }
+                    case FIXED -> {
+                        if (parameter.getDefaultValue() instanceof String) {
+                            parameters.put(keyParameter, parameter.getDefaultValue().toString());
+                        }
+                    }
+                    case OPTIONAL, MANDATORY -> {
+                        if (parameter.getNormalizationMethod() != null) {
+                            parameters.put(keyParameter, parameter.getNormalizationMethod().normalize(parameters.get(keyParameter)));
+                        }
+                        if (parameter.getPossibleValuesMethod() != null) {
+                            String itemFound = this.aiService.getItemInList(parameters.get(keyParameter), parameter.getPossibleValuesMethod().getPossibleValues());
+                            parameters.put(keyParameter, itemFound);
+                        }
+                    }
+                    default -> throw new ParameterTypeNotSupported();
+                }
+            }
+        }
+    }
+
     public List<IBaseTool> getAllToolsPlugins(String externalID){
         IStudent student = studentService.findByExternalKey(UUID.fromString(externalID));
         try {
             IBaseInstitutionPlugin institutionPlugin = getInstitutionPlugin(institutionPackage, student);
 
-            List<IBaseTool> tools = Stream.concat(institutionPlugin.getAllInformationToolsPlugins().stream(),
-                            this.getAllServiceToolsPlugins(institutionPlugin).stream()).collect(Collectors.toCollection(ArrayList::new));
-            tools.addAll(this.getToolsPlanner());
+            List<IBaseTool> tools = Stream.concat(institutionPlugin.getAllInformationToolsPlugins().stream(), this.getAllServiceToolsPlugins(institutionPlugin).stream()).collect(Collectors.toCollection(ArrayList::new));
+            tools.addAll(plannerService.getToolsPlanner());
 
             return tools;
         }catch (Exception exception){
@@ -449,82 +474,5 @@ public class ResponseService extends Reflection{
             exception.printStackTrace();
             throw new RuntimeException((exception.getCause() != null) ? exception.getCause(): exception);
         }
-    }
-
-    public List<IBaseTool> getToolsPlanner() {
-        return new ArrayList<>(List.of(
-                Tool.tool(
-                        "createPlanner",
-                        "Ferramenta para criar uma agenda que possa adicionar tarefas/lembretes",
-                        plannerService::create,
-                        Map.of(
-                                "nome", ParameterTool.stringParam(
-                                        "Nome para a agenda", ParameterType.MANDATORY, null, null
-                                ),
-                                "description", ParameterTool.stringParam(
-                                        "Descrição para a agenda", ParameterType.OPTIONAL, null, null
-                                )
-                        )
-                ),
-                Tool.tool(
-                        "getPlanners",
-                        "Ferramenta para buscar todas as agendas criadas",
-                        plannerService::getAll
-                ),
-                Tool.tool(
-                        "deletePlanner",
-                        "Ferramenta para excluir a agenda pelo id e suas tarefas",
-                        plannerService::delete,
-                        Map.of(
-                                "plannerId", ParameterTool.numberParam(
-                                        "Id da agenda a ser apagada", ParameterType.MANDATORY, null, null
-                                )
-                        )
-                ),
-                Tool.tool(
-                        "createTask",
-                        "Ferramenta para criar tarefas/lembretes em uma agenda",
-                        plannerService::createTask,
-                        Map.of(
-                                "title", ParameterTool.stringParam(
-                                        "Título para a tarefa/lembrete", ParameterType.MANDATORY, null, null
-                                ),
-                                "description", ParameterTool.stringParam(
-                                        "Descrição para a tarefa/lembrete", ParameterType.OPTIONAL, null, null
-                                ),
-                                "date", ParameterTool.stringParam(
-                                        "Data e hora para a tarefa/lembrete no formato AAAA-MM-DDTHH:MM", ParameterType.MANDATORY, null, null
-                                ),
-                                "plannerId", ParameterTool.numberParam(
-                                        "Id do planner que será adicionado a tarefa/lembrete", ParameterType.MANDATORY, null, null
-                                )
-                        )
-                ),
-                Tool.tool(
-                        "getTasks",
-                        "Ferramenta para buscar todas as tarefas/lembretes criadas",
-                        plannerService::getAllTask
-                ),
-                Tool.tool(
-                        "deleteTask",
-                        "Ferramenta para excluir uma tarefa/lembrete pelo id",
-                        plannerService::deleteTask,
-                        Map.of(
-                                "plannerId", ParameterTool.numberParam(
-                                        "Id da agenda a ser apagada", ParameterType.MANDATORY, null, null
-                                )
-                        )
-                ),
-                Tool.tool(
-                        "getTasksByDate",
-                        "Ferramenta para buscar todas as tarefas/lembretes de uma data específica",
-                        plannerService::getTasksByDate,
-                        Map.of(
-                                "date", ParameterTool.stringParam(
-                                        "Data e hora para buscar sa tarefa/lembrete no formato AAAA-MM-DD", ParameterType.MANDATORY, null, null
-                                )
-                        )
-                )
-        ));
     }
 }

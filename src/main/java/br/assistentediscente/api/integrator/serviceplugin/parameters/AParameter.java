@@ -3,6 +3,7 @@ package br.assistentediscente.api.integrator.serviceplugin.parameters;
 import br.assistentediscente.api.integrator.enums.ClazzType;
 import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.institutions.IBaseInstitutionPlugin;
+import br.assistentediscente.api.integrator.institutions.info.IAutoValueParamMethod;
 import br.assistentediscente.api.integrator.institutions.info.INormalizationMethod;
 import br.assistentediscente.api.integrator.institutions.info.IPossibleValuesMethod;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -28,5 +29,7 @@ public interface AParameter {
     INormalizationMethod getNormalizationMethod();
     @JsonIgnore
     IPossibleValuesMethod getPossibleValuesMethod();
+    @JsonIgnore
+    IAutoValueParamMethod getAutoValueParamMethod();
 
 }

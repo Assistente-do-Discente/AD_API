@@ -3,6 +3,7 @@ package br.assistentediscente.api.institutionplugin.ueg.converter;
 import br.assistentediscente.api.integrator.enums.ClazzType;
 import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.institutions.IBaseInstitutionPlugin;
+import br.assistentediscente.api.integrator.institutions.info.IAutoValueParamMethod;
 import br.assistentediscente.api.integrator.institutions.info.INormalizationMethod;
 import br.assistentediscente.api.integrator.institutions.info.IPossibleValuesMethod;
 import br.assistentediscente.api.integrator.serviceplugin.parameters.AParameter;
@@ -29,11 +30,10 @@ public class ParameterTool implements AParameter {
     INormalizationMethod normalizationMethod;
     @JsonIgnore
     IPossibleValuesMethod possibleValuesMethod;
+    @JsonIgnore
+    IAutoValueParamMethod autoValueParamMethod;
 
-    @Override
-    public Object getDefaultValue() {
-        return null;
-    }
+    Object defaultValue;
 
     @Override
     public Object getValueFromInstitution(IBaseInstitutionPlugin institution) {
@@ -72,6 +72,24 @@ public class ParameterTool implements AParameter {
                 .type(ParameterType.MANDATORY)
                 .description(description)
                 .possibleValues(possibleValues)
+                .build();
+    }
+
+    public static ParameterTool fixedParam(String description, String defaultValue) {
+        return ParameterTool.builder()
+                .clazz(ClazzType.STRING)
+                .type(ParameterType.FIXED)
+                .description(description)
+                .defaultValue(defaultValue)
+                .build();
+    }
+
+    public static ParameterTool autoParam(String description, IAutoValueParamMethod autoValueParamMethod) {
+        return ParameterTool.builder()
+                .clazz(ClazzType.STRING)
+                .type(ParameterType.AUTO)
+                .description(description)
+                .autoValueParamMethod(autoValueParamMethod)
                 .build();
     }
 }

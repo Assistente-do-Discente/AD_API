@@ -2,6 +2,7 @@ package br.assistentediscente.api.institutionplugin.ueg;
 
 import br.assistentediscente.api.institutionplugin.ueg.converter.ConverterUEG;
 import br.assistentediscente.api.institutionplugin.ueg.converter.ParameterTool;
+import br.assistentediscente.api.institutionplugin.ueg.converter.ResponseTool;
 import br.assistentediscente.api.institutionplugin.ueg.converter.Tool;
 import br.assistentediscente.api.institutionplugin.ueg.dto.KeyUrl;
 import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterScheduleByDisciplineName;
@@ -9,6 +10,7 @@ import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterSchedu
 import br.assistentediscente.api.institutionplugin.ueg.infos.StudentDataUEG;
 import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.converter.IConverterInstitution;
+import br.assistentediscente.api.integrator.converter.IResponseTool;
 import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.enums.WeekDay;
 import br.assistentediscente.api.integrator.exceptions.UtilExceptionHandler;
@@ -605,7 +607,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         ));
     }
 
-    public Object getSchedules(Map<String, String> parameters) {
+    public IResponseTool getSchedules(Map<String, String> parameters) {
         List<IDisciplineSchedule> disciplineScheduleList;
 
         if (parameters.containsKey("weekDay")) {
@@ -616,10 +618,10 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
             disciplineScheduleList = this.getWeekSchedule();
         }
 
-        return disciplineScheduleList;
+        return new ResponseTool("", disciplineScheduleList);
     }
 
-    public Object getGrades(Map<String, String> parameters) {
+    public IResponseTool getGrades(Map<String, String> parameters) {
         List<IDisciplineGrade> disciplineGrades;
 
         if (parameters.containsKey("semester")) {
@@ -630,26 +632,26 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
             disciplineGrades = this.getGrades();
         }
 
-        return disciplineGrades;
+        return new ResponseTool("", disciplineGrades);
     }
 
-    public Object getAcademicData(Map<String, String> parameters) {
-        return getAcademicData();
+    public IResponseTool getAcademicData(Map<String, String> parameters) {
+        return new ResponseTool("", getAcademicData());
     }
 
-    public Object getStudentData(Map<String, String> parameters) {
-        return getStudentData();
+    public IResponseTool getStudentData(Map<String, String> parameters) {
+        return new ResponseTool("", getStudentData());
     }
 
-    public Object getActiveDisciplinesWithAbsences(Map<String, String> parameters) {
-       return getActiveDisciplinesWithAbsences();
+    public IResponseTool getActiveDisciplinesWithAbsences(Map<String, String> parameters) {
+       return new ResponseTool("", getActiveDisciplinesWithAbsences());
     }
 
-    public Object getCompExtHours(Map<String, String> parameters) {
-        return getCompExtHours();
+    public IResponseTool getCompExtHours(Map<String, String> parameters) {
+        return new ResponseTool("", getCompExtHours());
     }
 
-    public Object calculateAverage(Map<String, String> parameters) {
+    public IResponseTool calculateAverage(Map<String, String> parameters) {
         Double nota1 = parameters.containsKey("nota1va") ? Double.parseDouble(parameters.get("nota1va")) : null;
         Double nota2 = parameters.containsKey("nota2va") ? Double.parseDouble(parameters.get("nota2va")) : null;
         Double resultado;
@@ -662,11 +664,11 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
             resultado = (300 - (nota2*3)) / 2;
         }
 
-        return BigDecimal.valueOf(resultado).setScale(2, RoundingMode.HALF_EVEN).doubleValue();
+        return new ResponseTool("", BigDecimal.valueOf(resultado).setScale(2, RoundingMode.HALF_EVEN).doubleValue());
     }
 
-    public Object getContactUeg(Map<String, String> parameters) {
-        return """
+    public IResponseTool getContactUeg(Map<String, String> parameters) {
+        return new ResponseTool("", """
                 Contatos institucionais da UEG:
                 
                  Número geral: (62) 3328-1433
@@ -694,16 +696,16 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 
                 Secretaria do Campus Central:
                  E-mail: secretaria.campuscentral@ueg.br
-                """;
+                """);
     }
 
-    public Object getAboutUeg(Map<String, String> parameters) {
-        return """
+    public IResponseTool getAboutUeg(Map<String, String> parameters) {
+        return new ResponseTool("", """
                 A Universidade Estadual de Goiás (UEG) é uma universidade pública multicampi do Estado de Goiás, criada pela Lei Estadual 13.456, de 16 de abril de 1999.
                 Nos termos do seu Estatuto, aprovado pelo Decreto Estadual nº 9.593, de 17 de janeiro de 2020 e do Regimento Geral aprovado por seu Conselho Universitário, a UEG é uma instituição de ensino, pesquisa e extensão com finalidade científica e tecnológica, de natureza cultural e educacional, com caráter público, gratuito e laico. Trata-se de uma autarquia do poder executivo do Estado de Goiás, com autonomia didático-científica, administrativa e de gestão financeira e patrimonial, nos termos do Artigo 207 da Constituição da República Federativa do Brasil, do Artigo 161 da Constituição do Estado de Goiás e da Lei Estadual nº 18.971, de 23 de julho de 2015. Rege-se por seu Estatuto, seu Regimento Geral e por suas normas complementares.
                 A UEG possui sede no município de Anápolis (GO) e alcance acadêmico organizado em oito regiões do estado, a partir de Câmpus e Unidades Universitárias (UnU) presenciais, assim como de Polos de Educação a Distância (EaD). Esta presença alcança todas as microrregiões de Goiás definidas pelo Instituto Brasileiro de Geografia e Estatística (IBGE), atribuindo à UEG, como única universidade pública estadual de Goiás, perfil e função estratégica para a interiorização do acesso, das condições, dos processos e dos resultados da educação superior pública, do desenvolvimento científico e tecnológico e da inovação que ele promove desde o âmbito local nos municípios.
                 No limiar da celebração do seu jubileu de prata, estas características alicerçam o perfil da UEG como Instituição Pública Estadual de Educação Superior, Ciência e Tecnologia, dedicada a alcançar e responder, local e regionalmente, às demandas de formação de pessoal de nível superior nos municípios goianos para o seu desenvolvimento.
-                """;
+                """);
     }
 
     private List<String> getDisciplineNames() {
