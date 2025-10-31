@@ -4,6 +4,7 @@ import br.assistentediscente.api.institutionplugin.ueg.converter.ParameterTool;
 import br.assistentediscente.api.institutionplugin.ueg.converter.Tool;
 import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.converter.IResponseTool;
+import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.enums.WeekDay;
 import br.assistentediscente.api.integrator.exceptions.ai.DisciplineNameNotFoundException;
 import br.assistentediscente.api.integrator.exceptions.intent.IntentNotSupportedException;
@@ -388,7 +389,7 @@ public class ResponseService extends Reflection{
 
             return tool.getExecuteMethod().execute(parameters);
         } catch (Exception e) {
-            handleException(e, new RuntimeException("Method "+ tool.getName() + " not found"));
+            handleException(e, new RuntimeException(e.getMessage()));
         }
         return null;
     }
@@ -411,6 +412,10 @@ public class ResponseService extends Reflection{
                         }
                     }
                     case OPTIONAL, MANDATORY -> {
+                        if (parameter.getType().equals(ParameterType.MANDATORY) && parameters.get(keyParameter) == null) {
+                            throw new ParamNotFoundException(Arrays.asList(keyParameter));
+                        }
+
                         if (parameter.getNormalizationMethod() != null) {
                             parameters.put(keyParameter, parameter.getNormalizationMethod().normalize(parameters.get(keyParameter)));
                         }

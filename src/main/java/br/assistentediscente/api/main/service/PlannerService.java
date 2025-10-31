@@ -272,6 +272,9 @@ public class PlannerService {
                                 ),
                                 "plannerId", ParameterTool.numberParam(
                                         "Id do planner que será adicionado a tarefa/lembrete, utilize a ferramenta 'getPlanners' para obter o id da agenda que o usuário deseja criar a tarefa/lembrete", ParameterType.MANDATORY, null, null
+                                ),
+                                "studentId", ParameterTool.autoParam(
+                                        "Identificador do estudante para criar a agenda, esse parâmetro é automatico e não deve ser enviado", this::getStudentId
                                 )
                         )
                 ),
