@@ -1,5 +1,7 @@
 package br.assistentediscente.api.main.controller;
 
+import br.assistentediscente.api.integrator.converter.IBaseTool;
+import br.assistentediscente.api.integrator.converter.IResponseTool;
 import br.assistentediscente.api.main.dto.AutenticationResponse;
 import br.assistentediscente.api.main.dto.InstitutionLoginFieldsDTO;
 import br.assistentediscente.api.main.dto.LoginDTO;
@@ -83,15 +85,20 @@ public class ResponseController {
     @PostMapping(value = "/generate-response/{toolName}",
             consumes = MediaType.APPLICATION_JSON_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    private ResponseEntity<?> doResponseByToolName(@AuthenticationPrincipal Jwt jwt,
-                                                   @RequestBody Map<String, String> params,
-                                                   @PathVariable String toolName){
-        return ResponseEntity.ok(responseService.doResponseByToolName(toolName, jwt.getSubject(), params));
+    private ResponseEntity<IResponseTool> doResponseByToolName(@AuthenticationPrincipal Jwt jwt,
+                                                               @RequestBody Map<String, String> params,
+                                                               @PathVariable String toolName){
+        return ResponseEntity.ok(responseService.doResponseByToolName(toolName, jwt != null ? jwt.getSubject() : null, params));
     }
 
     @GetMapping(path = "/institutionTools")
-    private ResponseEntity<?> getAllInstitutionTools(@AuthenticationPrincipal Jwt jwt){
+    private ResponseEntity<List<IBaseTool>> getAllInstitutionTools(@AuthenticationPrincipal Jwt jwt){
         return ResponseEntity.ok(responseService.getAllToolsPlugins(jwt.getSubject()));
+    }
+
+    @GetMapping(path = "/informationTools")
+    private ResponseEntity<List<IBaseTool>> getInformationTools(){
+        return ResponseEntity.ok(responseService.getInformationTools());
     }
 
 

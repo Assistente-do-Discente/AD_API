@@ -158,6 +158,32 @@ public class ConverterUEG implements IConverterInstitution {
         return disciplineAbsenceList;
     }
 
+    public ComplementaryActivitiesUEG getComplementaryActFromJson(JsonObject complementary, JsonObject hoursComplementary) {
+        ComplementaryActivitiesUEG complementares = gson.fromJson(complementary, ComplementaryActivitiesUEG.class);
+        JsonObject grade = hoursComplementary.getAsJsonObject("AtividadeComplementar");
+        if (grade != null) {
+            complementares.setHourRequired(grade.has("ch_exigida") ? grade.get("ch_exigida").getAsLong() : 0L);
+            complementares.setHourCompleted(grade.has("ch_cumprida") ? grade.get("ch_cumprida").getAsLong() : 0L);
+        }
+        return complementares;
+    }
+
+    public ExtensionActivitiesUEG getExtensionActFromJson(JsonObject root) {
+        ExtensionActivitiesUEG extensao = gson.fromJson(root, ExtensionActivitiesUEG.class);
+        JsonArray gradeObrigatoria = root.getAsJsonArray("GradeObrigatoria");
+        JsonObject grade = gradeObrigatoria != null && !gradeObrigatoria.isEmpty() ? gradeObrigatoria.get(0).getAsJsonObject() : null;
+        if (grade != null) {
+            extensao.setAceRequired(grade.has("mat_ace") ? grade.get("mat_ace").getAsLong() : 0L);
+            extensao.setCceRequired(grade.has("mat_cce") ? grade.get("mat_cce").getAsLong() : 0L);
+            extensao.setAceCompleted(grade.has("ace_cumprida") ? grade.get("ace_cumprida").getAsLong() : 0L);
+            extensao.setCceCompleted(grade.has("cce_cumprida") ? grade.get("cce_cumprida").getAsLong() : 0L);
+            extensao.setTotalHoursRequired(extensao.getAceRequired() + extensao.getCceRequired());
+            extensao.setTotalHoursCompleted(extensao.getAceCompleted() + extensao.getCceCompleted());
+        }
+
+        return extensao;
+    }
+
 
     /**
      * Recebe um json e retorna os dados da pessoa logada

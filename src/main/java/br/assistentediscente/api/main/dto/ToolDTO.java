@@ -1,4 +1,4 @@
-package br.assistentediscente.api.institutionplugin.ueg.converter;
+package br.assistentediscente.api.main.dto;
 
 import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.institutions.info.IToolMethod;
@@ -17,7 +17,7 @@ import java.util.Map;
 @SuperBuilder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Tool implements IBaseTool {
+public class ToolDTO implements IBaseTool {
     String name;
     String description;
     Boolean highConfirmation;
@@ -26,20 +26,20 @@ public class Tool implements IBaseTool {
     Class<? extends IServicePlugin> serviceClass;
     Boolean authenticationRequired;
 
-    public static Tool tool(String name, String description, IToolMethod executeMethod) {
+    public static ToolDTO tool(String name, String description, IToolMethod executeMethod) {
         return tool(name, description, true, executeMethod, null);
     }
 
-    public static Tool tool(String name, String description, boolean authenticationRequired, IToolMethod executeMethod) {
+    public static ToolDTO tool(String name, String description, boolean authenticationRequired, IToolMethod executeMethod) {
         return tool(name, description, authenticationRequired, executeMethod, null);
     }
 
-    public static Tool tool(String name, String description, IToolMethod executeMethod, Map<String, AParameter> parameters) {
+    public static ToolDTO tool(String name, String description, IToolMethod executeMethod, Map<String, AParameter> parameters) {
         return tool(name, description, true, executeMethod, parameters);
     }
 
-    public static Tool tool(String name, String description, boolean authenticationRequired, IToolMethod executeMethod, Map<String, AParameter> parameters) {
-        return Tool.builder()
+    public static ToolDTO tool(String name, String description, boolean authenticationRequired, IToolMethod executeMethod, Map<String, AParameter> parameters) {
+        return ToolDTO.builder()
                 .name(name)
                 .description(description)
                 .parameters(parameters)

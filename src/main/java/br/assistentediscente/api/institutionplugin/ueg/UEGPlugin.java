@@ -2,14 +2,18 @@ package br.assistentediscente.api.institutionplugin.ueg;
 
 import br.assistentediscente.api.institutionplugin.ueg.converter.ConverterUEG;
 import br.assistentediscente.api.institutionplugin.ueg.converter.ParameterTool;
+import br.assistentediscente.api.institutionplugin.ueg.converter.ResponseTool;
 import br.assistentediscente.api.institutionplugin.ueg.converter.Tool;
 import br.assistentediscente.api.institutionplugin.ueg.dto.KeyUrl;
+import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterMessageResponse;
 import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterScheduleByDisciplineName;
 import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterScheduleByWeekDay;
+import br.assistentediscente.api.institutionplugin.ueg.infos.ComplementaryActivitiesUEG;
+import br.assistentediscente.api.institutionplugin.ueg.infos.ExtensionActivitiesUEG;
 import br.assistentediscente.api.institutionplugin.ueg.infos.StudentDataUEG;
 import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.converter.IConverterInstitution;
-import br.assistentediscente.api.integrator.enums.ClazzType;
+import br.assistentediscente.api.integrator.converter.IResponseTool;
 import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.enums.WeekDay;
 import br.assistentediscente.api.integrator.exceptions.UtilExceptionHandler;
@@ -22,8 +26,6 @@ import br.assistentediscente.api.integrator.institutions.KeyValue;
 import br.assistentediscente.api.integrator.institutions.info.*;
 import br.assistentediscente.api.integrator.serviceplugin.service.IServicePlugin;
 import br.assistentediscente.api.main.model.IStudent;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 import lombok.Getter;
@@ -52,7 +54,6 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Getter
 public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
@@ -62,6 +63,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
     private final CloseableHttpClient httpClient;
     private String acuId;
     private final IConverterInstitution converterUEG;
+    private FormatterMessageResponse formatterResponse;
 
     public UEGPlugin() {
         this.httpCookieStore = new BasicCookieStore();
@@ -69,6 +71,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         this.httpClient =
                 HttpClients.custom().setDefaultCookieStore(httpCookieStore).build();
         this.converterUEG = new ConverterUEG();
+        this.formatterResponse = new FormatterMessageResponse();
     }
 
     public UEGPlugin(IStudent student) {
@@ -78,6 +81,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 HttpClients.custom()
                         .setDefaultCookieStore(httpCookieStore).build();
         this.converterUEG = new ConverterUEG();
+        this.formatterResponse = new FormatterMessageResponse();
     }
 
     /**
@@ -296,6 +300,11 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         }
     }
 
+    public List<IDisciplineGrade> getGradeByDisciplineName(String disciplineToGetGrade) {
+        List<IDisciplineGrade> disciplineGrades = this.getGrades();
+        return disciplineGrades.stream().filter(discipline -> disciplineToGetGrade.equalsIgnoreCase(discipline.getDisciplineName().toUpperCase())).toList();
+    }
+
     @Override
     public IAcademicData getAcademicData() throws IntentNotSupportedException, InstitutionComunicationException {
         HttpGet httpGet = new HttpGet(DADOS_ACADEMICOS);
@@ -338,6 +347,11 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
             throw new InstitutionComunicationException("Não foi possivel se comunicar com o servidor da UEG," +
                     "tente novamente mais tarde");
         }
+    }
+
+    public List<IDisciplineAbsence> getActiveDisciplinesWithAbsencesByDisciplineName(String disciplineToGet) {
+        List<IDisciplineAbsence> disciplineAbsence = this.getActiveDisciplinesWithAbsences();
+        return disciplineAbsence.stream().filter(discipline -> disciplineToGet.equalsIgnoreCase(discipline.getDisciplineName().toUpperCase())).toList();
     }
 
     public IStudentData getStudentData() throws IntentNotSupportedException, InstitutionComunicationException {
@@ -477,7 +491,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
 
     }
 
-    public String getCompExtHours() throws IntentNotSupportedException {
+    public ExtensionActivitiesUEG getExtensionActivities() throws IntentNotSupportedException {
         if (Objects.isNull(acuId)) getPersonId();
 
         HttpGet httpGet = new HttpGet(DADOS_ATV_COMP_EXT + acuId);
@@ -486,7 +500,31 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
             HttpEntity entity = httpResponse.getEntity();
 
             if (responseOK(httpResponse)) {
-                return EntityUtils.toString(entity);
+                return new ConverterUEG().getExtensionActFromJson(JsonParser.parseString(EntityUtils.toString(entity)).getAsJsonObject());
+            }else{
+                throw new InstitutionComunicationException("Não foi possivel se comunicar com o servidor da UEG," +
+                        " tente novamente mais tarde");
+            }
+
+        } catch (Throwable error) {
+            throw new InstitutionComunicationException("Não foi possivel se comunicar com o servidor da UEG," +
+                    "tente novamente mais tarde");
+        }
+    }
+
+    public ComplementaryActivitiesUEG getComplementaryActivities() throws IntentNotSupportedException {
+        if (Objects.isNull(acuId)) getPersonId();
+
+        HttpGet httpGet = new HttpGet(DADOS_ATIVIDADES_COMPLEMENTARES + acuId);
+        HttpGet httpGet2 = new HttpGet(DADOS_ATV_COMP_EXT + acuId);
+        try {
+            CloseableHttpResponse httpResponse = httpClient.execute(httpGet, localContext);
+            CloseableHttpResponse httpResponse2 = httpClient.execute(httpGet2, localContext);
+            HttpEntity entity = httpResponse.getEntity();
+            HttpEntity entity2 = httpResponse2.getEntity();
+
+            if (responseOK(httpResponse)) {
+                return new ConverterUEG().getComplementaryActFromJson(JsonParser.parseString(EntityUtils.toString(entity)).getAsJsonObject(), JsonParser.parseString(EntityUtils.toString(entity2)).getAsJsonObject());
             }else{
                 throw new InstitutionComunicationException("Não foi possivel se comunicar com o servidor da UEG," +
                         " tente novamente mais tarde");
@@ -507,7 +545,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 ),
                 Tool.tool(
                         "getScheduleByWeekDay",
-                        "Obter o horário de aulas do dia informado",
+                        "Obter o horário de aulas do dia informado, ou se informado 'hoje', 'amanhã', 'ontem', entre outros",
                         this::getSchedules,
                         Map.of(
                                 "weekDay",
@@ -524,13 +562,22 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                         this::getSchedules,
                         Map.of(
                                 "disciplineName",
-                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY)
+                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY, null, this::getDisciplineNames)
                         )
                 ),
                 Tool.tool(
                         "getGrades",
-                        "Obter as notas do estudante, nas disciplinas se tem o item 'mat_media' que representa a média final da matérias, mas na lista 'nota_list' é possivel ver a nota dos 2 bimestres a N1 (1º Avaliação ou 1 va) e N2 (2º Avaliação ou 2 va)",
+                        "Obter as notas do estudante",
                         this::getGrades
+                ),
+                Tool.tool(
+                        "getGradesByDisciplineName",
+                        "Obter as notas do estudante pelo nome da disciplina",
+                        this::getGrades,
+                        Map.of(
+                                "disciplineName",
+                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY, null, this::getDisciplineNames)
+                        )
                 ),
                 Tool.tool(
                         "calculateAverage",
@@ -538,10 +585,10 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                         this::calculateAverage,
                         Map.of(
                                 "nota1va", ParameterTool.numberParam(
-                                        "Nota obtida na 1ª VA (0 a 100)", ParameterType.OPTIONAL
+                                        "Nota obtida na 1ª NA (0 a 100)", ParameterType.OPTIONAL, null, null
                                 ),
                                 "nota2va", ParameterTool.numberParam(
-                                        "Nota obtida na 2ª VA (0 a 100)", ParameterType.OPTIONAL
+                                        "Nota obtida na 2ª NA (0 a 100)", ParameterType.OPTIONAL, null, null
                                 )
                         )
                 ),
@@ -552,80 +599,123 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 ),
                 Tool.tool(
                         "getStudentData",
-                        "Obter dados sobre o estudante",
+                        "Obter dados sobre o estudante, outra função dessa ferramenta é verificar se o usuário está logado! ",
                         this::getStudentData
                 ),
                 Tool.tool(
                         "getActiveDisciplinesWithAbsences",
-                        "Obter todas disciplinas ativas com o número de faltas",
-                        this::getActiveDisciplinesWithAbsences
+                        "Obter o número de falta pela disciplina informada",
+                        this::getActiveDisciplinesWithAbsences,
+                        Map.of(
+                                "disciplineName",
+                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY, null, this::getDisciplineNames)
+                        )
                 ),
                 Tool.tool(
-                        "getComplementaryHours",
+                        "getComplementaryActivities",
                         """
-                        Obter todas informações sobre as horas de atividades complementares que foram e que devem ser cumpridas, na parte 'AtividadeComplementar'
-                        possui 'ch_exigida' que representa a carga horária a ser cumprida e 'ch_cumprida' representa a carga horária cumprida.
+                        Obter todas informações sobre as atividades complementares que estão registradas
                         """,
-                        this::getCompExtHours
+                        this::getComplementaryActivities
                 ),
                 Tool.tool(
-                        "getExtensionHours",
+                        "getExtensionActivities",
                         """
-                        Obter todas informações sobre as horas de extensão que foram e que devem ser cumpridas, tendo em vista que as atividades se dividem
-                        em 2 categorias Atividades Curriculares de Extensão (ACE) e Componentes Curriculares de Extensão (CCE) a quantidade a cumprir estão
-                        representadas na parte 'GradeObrigatoria' sendo os itens 'mat_ace' e 'mat_cce' as compridas estão representadas por 'ace_cumprida'
-                        e 'cce_cumprida'. É possivel fazer também fazer o detalhamento das atividades de extensão apenas case for realmente necessário, sendo
-                        representado pela parte 'Extensao' com o nome das atividades e o item 'ch_qtde_cce' representado a quantidade de horas aprovadas para
-                        extensão
+                        Obter todas informações sobre as atividades e horas de extensão.
                         """,
-                        this::getCompExtHours
+                        this::getExtensionActivities
+                ),
+                Tool.tool(
+                        "getAboutUeg",
+                        "Obtenha informações sobre a UEG e sua história",
+                        false,
+                        this::getAboutUeg
+                ),
+                Tool.tool(
+                        "getContactUeg",
+                        "Obtenha todas informações sobre os contatos da UEG como telefone, email, entre outros",
+                        false,
+                        this::getContactUeg
+                ),
+                Tool.tool(
+                        "verifyStudentIsAuthenticated",
+                        "Realiza verificação se o usuário está logado!",
+                        false,
+                        this::verifyStudentIsAuthenticated
                 )
         ));
     }
 
-    public Map<String, String> getSchedules(Map<String, String> parameters) throws JsonProcessingException {
-        Map<String, String> response = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
-        response.put("response", mapper.writeValueAsString(getWeekSchedule()));
-        return response;
+    public IResponseTool getSchedules(Map<String, String> parameters) {
+        List<IDisciplineSchedule> disciplineScheduleList;
+
+        if (parameters.containsKey("weekDay")) {
+            disciplineScheduleList = this.getScheduleByWeekDay(WeekDay.getByShortName(parameters.get("weekDay")));
+            return new ResponseTool(formatterResponse.getScheduleByWeekDay(disciplineScheduleList, WeekDay.getByShortName(parameters.get("weekDay"))), disciplineScheduleList);
+        } else if (parameters.containsKey("disciplineName")) {
+            disciplineScheduleList = this.getScheduleByDisciplineName(parameters.get("disciplineName"));
+            return new ResponseTool(formatterResponse.getScheduleByDisciplineName(disciplineScheduleList, parameters.get("disciplineName")), disciplineScheduleList);
+        } else {
+            disciplineScheduleList = this.getWeekSchedule();
+            return new ResponseTool(formatterResponse.getSchedule(disciplineScheduleList), disciplineScheduleList);
+        }
     }
 
-    public Map<String, String> getGrades(Map<String, String> parameters) throws JsonProcessingException {
-        Map<String, String> response = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
-        response.put("response", mapper.writeValueAsString(getGrades()));
-        return response;
+    public IResponseTool getGrades(Map<String, String> parameters) {
+        List<IDisciplineGrade> disciplineGrades;
+
+        if (parameters.containsKey("semester")) {
+            disciplineGrades = this.getGradesBySemester(parameters.get("semester"));
+            return new ResponseTool(formatterResponse.getGradesBySemester(disciplineGrades, parameters.get("semester")), disciplineGrades);
+        } else if (parameters.containsKey("disciplineName")) {
+            disciplineGrades = this.getGradeByDisciplineName(parameters.get("disciplineName"));
+            return new ResponseTool(formatterResponse.getGradesByDisciplineName(disciplineGrades, parameters.get("disciplineName")), disciplineGrades);
+        } else {
+            disciplineGrades = this.getGrades();
+            return new ResponseTool(formatterResponse.getGrades(disciplineGrades), disciplineGrades);
+        }
     }
 
-    public Map<String, String> getAcademicData(Map<String, String> parameters) throws JsonProcessingException {
-        Map<String, String> response = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
-        response.put("response", mapper.writeValueAsString(getAcademicData()));
-        return response;
+    public IResponseTool getAcademicData(Map<String, String> parameters) {
+        IAcademicData data = getAcademicData();
+        return new ResponseTool(formatterResponse.getAcademicData(data), data);
     }
 
-    public Map<String, String> getStudentData(Map<String, String> parameters) throws JsonProcessingException {
-        Map<String, String> response = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
-        response.put("response", mapper.writeValueAsString(getStudentData()));
-        return response;
+    public IResponseTool getStudentData(Map<String, String> parameters) {
+        IStudentData studentData = getStudentData();
+        return new ResponseTool(formatterResponse.getStudentData(studentData), studentData);
     }
 
-    public Map<String, String> getActiveDisciplinesWithAbsences(Map<String, String> parameters) throws JsonProcessingException {
-        Map<String, String> response = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
-        response.put("response", mapper.writeValueAsString(getActiveDisciplinesWithAbsences()));
-        return response;
+    public IResponseTool getActiveDisciplinesWithAbsences(Map<String, String> parameters) {
+        if (parameters.get("disciplineName") != null) {
+            List<IDisciplineAbsence> disciplineAbsenceList = this.getActiveDisciplinesWithAbsencesByDisciplineName(parameters.get("disciplineName"));
+            return new ResponseTool(formatterResponse.getActiveDisciplinesWithAbsencesByDisciplineName(disciplineAbsenceList, parameters.get("disciplineName")), disciplineAbsenceList);
+        } else {
+            List<IDisciplineAbsence> disciplineAbsenceList = this.getActiveDisciplinesWithAbsences();
+            return new ResponseTool(formatterResponse.getActiveDisciplinesWithAbsences(disciplineAbsenceList), disciplineAbsenceList);
+        }
     }
 
-    public Map<String, String> getCompExtHours(Map<String, String> parameters) throws JsonProcessingException {
-        Map<String, String> response = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
-        response.put("response", mapper.writeValueAsString(getCompExtHours()));
-        return response;
+    public IResponseTool getComplementaryActivities(Map<String, String> parameters) {
+        ComplementaryActivitiesUEG data = getComplementaryActivities();
+        return new ResponseTool(formatterResponse.getComplementaryHours(data), data);
     }
 
-    public Map<String, String> calculateAverage(Map<String, String> parameters) throws JsonProcessingException {
+    public IResponseTool getExtensionActivities(Map<String, String> parameters) {
+        ExtensionActivitiesUEG data = getExtensionActivities();
+        return new ResponseTool(formatterResponse.getExtensionHours(data), data);
+    }
+
+    public IResponseTool verifyStudentIsAuthenticated(Map<String, String> parameters) {
+        try {
+            if (Objects.isNull(acuId)) getPersonId();
+            return new ResponseTool("O usuário está autenticado", null);
+        } catch (Exception e) {
+            return new ResponseTool("O usuário não está autenticado", null);
+        }
+    }
+
+    public IResponseTool calculateAverage(Map<String, String> parameters) {
         Double nota1 = parameters.containsKey("nota1va") ? Double.parseDouble(parameters.get("nota1va")) : null;
         Double nota2 = parameters.containsKey("nota2va") ? Double.parseDouble(parameters.get("nota2va")) : null;
         Double resultado;
@@ -638,13 +728,57 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
             resultado = (300 - (nota2*3)) / 2;
         }
 
-        Map<String, String> response = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
+        return new ResponseTool("", BigDecimal.valueOf(resultado).setScale(2, RoundingMode.HALF_EVEN).doubleValue());
+    }
 
-        Map<String, Double> result = new HashMap<>();
-        result.put("resultado", BigDecimal.valueOf(resultado).setScale(2, RoundingMode.HALF_EVEN).doubleValue());
+    public IResponseTool getContactUeg(Map<String, String> parameters) {
+        return new ResponseTool("", """
+                Contatos institucionais da UEG:
+                
+                 Número geral: (62) 3328-1433
+                
+                ampus Central:
+                 Endereço: Rodovia BR-153, Quadra Área, Km 99, Fazenda Barreiro do Meio, Anápolis/GO, CEP: 75132-400
+                
+                Secretaria Acadêmica Central:
+                 Responsável: Brandina Fátima Mendonça de Castro Andrade
+                 Telefone: (62) 3328-1402 / (62) 3328-1152 Ramais 9716 e 9715
+                 E-mail: gsec.central@ueg.br
+                 SEI: 20259
+                
+                Coordenação de Diplomas:
+                 Responsável: Jane Aparecida Borges Arantes
+                 Telefone: (62) 3328-1152
+                 E-mail: diploma.prg@ueg.br
+                 SEI: 16128
+                
+                Coordenação de Gestão das Secretarias Acadêmicas:
+                 Responsável: Lílian Lopes Fernandes
+                 Telefone: (62) 3328-1135
+                 E-mail: gsec.central@ueg.br
+                 SEI: 20261
+                
+                Secretaria do Campus Central:
+                 E-mail: secretaria.campuscentral@ueg.br
+                """);
+    }
 
-        response.put("response", mapper.writeValueAsString(result));
-        return response;
+    public IResponseTool getAboutUeg(Map<String, String> parameters) {
+        return new ResponseTool("", """
+                A Universidade Estadual de Goiás (UEG) é uma universidade pública multicampi do Estado de Goiás, criada pela Lei Estadual 13.456, de 16 de abril de 1999.
+                Nos termos do seu Estatuto, aprovado pelo Decreto Estadual nº 9.593, de 17 de janeiro de 2020 e do Regimento Geral aprovado por seu Conselho Universitário, a UEG é uma instituição de ensino, pesquisa e extensão com finalidade científica e tecnológica, de natureza cultural e educacional, com caráter público, gratuito e laico. Trata-se de uma autarquia do poder executivo do Estado de Goiás, com autonomia didático-científica, administrativa e de gestão financeira e patrimonial, nos termos do Artigo 207 da Constituição da República Federativa do Brasil, do Artigo 161 da Constituição do Estado de Goiás e da Lei Estadual nº 18.971, de 23 de julho de 2015. Rege-se por seu Estatuto, seu Regimento Geral e por suas normas complementares.
+                A UEG possui sede no município de Anápolis (GO) e alcance acadêmico organizado em oito regiões do estado, a partir de Câmpus e Unidades Universitárias (UnU) presenciais, assim como de Polos de Educação a Distância (EaD). Esta presença alcança todas as microrregiões de Goiás definidas pelo Instituto Brasileiro de Geografia e Estatística (IBGE), atribuindo à UEG, como única universidade pública estadual de Goiás, perfil e função estratégica para a interiorização do acesso, das condições, dos processos e dos resultados da educação superior pública, do desenvolvimento científico e tecnológico e da inovação que ele promove desde o âmbito local nos municípios.
+                No limiar da celebração do seu jubileu de prata, estas características alicerçam o perfil da UEG como Instituição Pública Estadual de Educação Superior, Ciência e Tecnologia, dedicada a alcançar e responder, local e regionalmente, às demandas de formação de pessoal de nível superior nos municípios goianos para o seu desenvolvimento.
+                """);
+    }
+
+    private List<String> getDisciplineNames() {
+        List<String> disciplineNames = new ArrayList<>();
+
+        List<IDisciplineGrade> disciplineGrades = this.getGrades();
+        for (IDisciplineGrade dg : disciplineGrades) {
+            disciplineNames.add(dg.getDisciplineName());
+        }
+        return disciplineNames;
     }
 }

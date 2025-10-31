@@ -26,7 +26,8 @@ public class SecurityConfig {
                 authorizeRequests.requestMatchers(
                         "/api/authenticate-student",
                         "api/login-fields/*",
-                        "api/generate-response/*").permitAll()
+                        "api/generate-response/*",
+                        "api/informationTools").permitAll()
                         .anyRequest().authenticated());
         http.csrf(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(outh2 ->

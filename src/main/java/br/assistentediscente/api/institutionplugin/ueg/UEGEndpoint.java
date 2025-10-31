@@ -14,5 +14,6 @@ public interface UEGEndpoint {
     String GERAR_NOVO_HISTORICO_ACADEMICO = "https://www.app.ueg.br/fenix-back-end/historico_academico/nao_integralizado";
 
     String DADOS_ATV_COMP_EXT = "https://www.app.ueg.br/fenix-back-end/percurso_academico_aluno/evolucao_academica/?acu_id=";
+    String DADOS_ATIVIDADES_COMPLEMENTARES = "https://www.app.ueg.br/fenix-back-end/atividade_complementar_aluno/buscar_ac?acu_id=";
 
 }

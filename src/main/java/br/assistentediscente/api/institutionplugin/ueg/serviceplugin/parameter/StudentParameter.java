@@ -3,6 +3,9 @@ package br.assistentediscente.api.institutionplugin.ueg.serviceplugin.parameter;
 import br.assistentediscente.api.integrator.enums.ClazzType;
 import br.assistentediscente.api.integrator.enums.ParameterType;
 import br.assistentediscente.api.integrator.institutions.IBaseInstitutionPlugin;
+import br.assistentediscente.api.integrator.institutions.info.IAutoValueParamMethod;
+import br.assistentediscente.api.integrator.institutions.info.INormalizationMethod;
+import br.assistentediscente.api.integrator.institutions.info.IPossibleValuesMethod;
 import br.assistentediscente.api.integrator.serviceplugin.parameters.AParameter;
 
 import java.util.List;
@@ -41,6 +44,21 @@ public class StudentParameter implements AParameter {
 
     @Override
     public List<String> getPossibleValues() {
+        return null;
+    }
+
+    @Override
+    public INormalizationMethod getNormalizationMethod() {
+        return null;
+    }
+
+    @Override
+    public IPossibleValuesMethod getPossibleValuesMethod() {
+        return null;
+    }
+
+    @Override
+    public IAutoValueParamMethod getAutoValueParamMethod() {
         return null;
     }
 

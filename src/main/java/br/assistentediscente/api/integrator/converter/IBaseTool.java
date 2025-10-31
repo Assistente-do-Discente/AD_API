@@ -14,6 +14,8 @@ public interface IBaseTool {
     Map<String, AParameter> getParameters();
 
     @JsonIgnore
+    Boolean getAuthenticationRequired();
+    @JsonIgnore
     IToolMethod getExecuteMethod();
     @JsonIgnore
     Class<? extends IServicePlugin> getServiceClass();

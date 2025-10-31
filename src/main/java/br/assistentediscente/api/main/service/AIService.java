@@ -63,4 +63,11 @@ public class AIService {
         AIApi aiApi = getAIApi();
         return aiApi.guessServicePluginActivationName(activationName,serviceAndActivationNames);
     }
+
+    public String getItemInList(String itemName, List<String> items) {
+        if (items == null || items.isEmpty())
+            return "NENHUMA";
+        AIApi aiApi = getAIApi();
+        return aiApi.guessItemFromItems(itemName, items);
+    }
 }
