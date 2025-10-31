@@ -5,8 +5,11 @@ import br.assistentediscente.api.institutionplugin.ueg.converter.ParameterTool;
 import br.assistentediscente.api.institutionplugin.ueg.converter.ResponseTool;
 import br.assistentediscente.api.institutionplugin.ueg.converter.Tool;
 import br.assistentediscente.api.institutionplugin.ueg.dto.KeyUrl;
+import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterMessageResponse;
 import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterScheduleByDisciplineName;
 import br.assistentediscente.api.institutionplugin.ueg.formatter.FormatterScheduleByWeekDay;
+import br.assistentediscente.api.institutionplugin.ueg.infos.ComplementaryActivitiesUEG;
+import br.assistentediscente.api.institutionplugin.ueg.infos.ExtensionActivitiesUEG;
 import br.assistentediscente.api.institutionplugin.ueg.infos.StudentDataUEG;
 import br.assistentediscente.api.integrator.converter.IBaseTool;
 import br.assistentediscente.api.integrator.converter.IConverterInstitution;
@@ -60,6 +63,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
     private final CloseableHttpClient httpClient;
     private String acuId;
     private final IConverterInstitution converterUEG;
+    private FormatterMessageResponse formatterResponse;
 
     public UEGPlugin() {
         this.httpCookieStore = new BasicCookieStore();
@@ -67,6 +71,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         this.httpClient =
                 HttpClients.custom().setDefaultCookieStore(httpCookieStore).build();
         this.converterUEG = new ConverterUEG();
+        this.formatterResponse = new FormatterMessageResponse();
     }
 
     public UEGPlugin(IStudent student) {
@@ -76,6 +81,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 HttpClients.custom()
                         .setDefaultCookieStore(httpCookieStore).build();
         this.converterUEG = new ConverterUEG();
+        this.formatterResponse = new FormatterMessageResponse();
     }
 
     /**
@@ -343,6 +349,11 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         }
     }
 
+    public List<IDisciplineAbsence> getActiveDisciplinesWithAbsencesByDisciplineName(String disciplineToGet) {
+        List<IDisciplineAbsence> disciplineAbsence = this.getActiveDisciplinesWithAbsences();
+        return disciplineAbsence.stream().filter(discipline -> disciplineToGet.equalsIgnoreCase(discipline.getDisciplineName().toUpperCase())).toList();
+    }
+
     public IStudentData getStudentData() throws IntentNotSupportedException, InstitutionComunicationException {
 
         HttpGet httpGet = new HttpGet(PERFIL);
@@ -480,7 +491,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
 
     }
 
-    public String getCompExtHours() throws IntentNotSupportedException {
+    public ExtensionActivitiesUEG getExtensionActivities() throws IntentNotSupportedException {
         if (Objects.isNull(acuId)) getPersonId();
 
         HttpGet httpGet = new HttpGet(DADOS_ATV_COMP_EXT + acuId);
@@ -489,7 +500,31 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
             HttpEntity entity = httpResponse.getEntity();
 
             if (responseOK(httpResponse)) {
-                return EntityUtils.toString(entity);
+                return new ConverterUEG().getExtensionActFromJson(JsonParser.parseString(EntityUtils.toString(entity)).getAsJsonObject());
+            }else{
+                throw new InstitutionComunicationException("Não foi possivel se comunicar com o servidor da UEG," +
+                        " tente novamente mais tarde");
+            }
+
+        } catch (Throwable error) {
+            throw new InstitutionComunicationException("Não foi possivel se comunicar com o servidor da UEG," +
+                    "tente novamente mais tarde");
+        }
+    }
+
+    public ComplementaryActivitiesUEG getComplementaryActivities() throws IntentNotSupportedException {
+        if (Objects.isNull(acuId)) getPersonId();
+
+        HttpGet httpGet = new HttpGet(DADOS_ATIVIDADES_COMPLEMENTARES + acuId);
+        HttpGet httpGet2 = new HttpGet(DADOS_ATV_COMP_EXT + acuId);
+        try {
+            CloseableHttpResponse httpResponse = httpClient.execute(httpGet, localContext);
+            CloseableHttpResponse httpResponse2 = httpClient.execute(httpGet2, localContext);
+            HttpEntity entity = httpResponse.getEntity();
+            HttpEntity entity2 = httpResponse2.getEntity();
+
+            if (responseOK(httpResponse)) {
+                return new ConverterUEG().getComplementaryActFromJson(JsonParser.parseString(EntityUtils.toString(entity)).getAsJsonObject(), JsonParser.parseString(EntityUtils.toString(entity2)).getAsJsonObject());
             }else{
                 throw new InstitutionComunicationException("Não foi possivel se comunicar com o servidor da UEG," +
                         " tente novamente mais tarde");
@@ -510,7 +545,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 ),
                 Tool.tool(
                         "getScheduleByWeekDay",
-                        "Obter o horário de aulas do dia informado",
+                        "Obter o horário de aulas do dia informado, ou se informado 'hoje', 'amanhã', 'ontem', entre outros",
                         this::getSchedules,
                         Map.of(
                                 "weekDay",
@@ -550,10 +585,10 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                         this::calculateAverage,
                         Map.of(
                                 "nota1va", ParameterTool.numberParam(
-                                        "Nota obtida na 1ª VA (0 a 100)", ParameterType.OPTIONAL, null, null
+                                        "Nota obtida na 1ª NA (0 a 100)", ParameterType.OPTIONAL, null, null
                                 ),
                                 "nota2va", ParameterTool.numberParam(
-                                        "Nota obtida na 2ª VA (0 a 100)", ParameterType.OPTIONAL, null, null
+                                        "Nota obtida na 2ª NA (0 a 100)", ParameterType.OPTIONAL, null, null
                                 )
                         )
                 ),
@@ -569,28 +604,26 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 ),
                 Tool.tool(
                         "getActiveDisciplinesWithAbsences",
-                        "Obter todas disciplinas ativas com o número de faltas",
-                        this::getActiveDisciplinesWithAbsences
+                        "Obter o número de falta pela disciplina informada",
+                        this::getActiveDisciplinesWithAbsences,
+                        Map.of(
+                                "disciplineName",
+                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY, null, this::getDisciplineNames)
+                        )
                 ),
                 Tool.tool(
-                        "getComplementaryHours",
+                        "getComplementaryActivities",
                         """
-                        Obter todas informações sobre as horas de atividades complementares que foram e que devem ser cumpridas, na parte 'AtividadeComplementar'
-                        possui 'ch_exigida' que representa a carga horária a ser cumprida e 'ch_cumprida' representa a carga horária cumprida.
+                        Obter todas informações sobre as atividades complementares que estão registradas
                         """,
-                        this::getCompExtHours
+                        this::getComplementaryActivities
                 ),
                 Tool.tool(
-                        "getExtensionHours",
+                        "getExtensionActivities",
                         """
-                        Obter todas informações sobre as horas de extensão que foram e que devem ser cumpridas, tendo em vista que as atividades se dividem
-                        em 2 categorias Atividades Curriculares de Extensão (ACE) e Componentes Curriculares de Extensão (CCE) a quantidade a cumprir estão
-                        representadas na parte 'GradeObrigatoria' sendo os itens 'mat_ace' e 'mat_cce' as compridas estão representadas por 'ace_cumprida'
-                        e 'cce_cumprida'. É possivel fazer também fazer o detalhamento das atividades de extensão apenas case for realmente necessário, sendo
-                        representado pela parte 'Extensao' com o nome das atividades e o item 'ch_qtde_cce' representado a quantidade de horas aprovadas para
-                        extensão
+                        Obter todas informações sobre as atividades e horas de extensão.
                         """,
-                        this::getCompExtHours
+                        this::getExtensionActivities
                 ),
                 Tool.tool(
                         "getAboutUeg",
@@ -603,6 +636,12 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                         "Obtenha todas informações sobre os contatos da UEG como telefone, email, entre outros",
                         false,
                         this::getContactUeg
+                ),
+                Tool.tool(
+                        "verifyStudentIsAuthenticated",
+                        "Realiza verificação se o usuário está logado!",
+                        false,
+                        this::verifyStudentIsAuthenticated
                 )
         ));
     }
@@ -611,14 +650,15 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         List<IDisciplineSchedule> disciplineScheduleList;
 
         if (parameters.containsKey("weekDay")) {
-            disciplineScheduleList = this.getScheduleByWeekDay(WeekDay.valueOf(parameters.get("weekDay")));
+            disciplineScheduleList = this.getScheduleByWeekDay(WeekDay.getByShortName(parameters.get("weekDay")));
+            return new ResponseTool(formatterResponse.getScheduleByWeekDay(disciplineScheduleList, WeekDay.getByShortName(parameters.get("weekDay"))), disciplineScheduleList);
         } else if (parameters.containsKey("disciplineName")) {
             disciplineScheduleList = this.getScheduleByDisciplineName(parameters.get("disciplineName"));
+            return new ResponseTool(formatterResponse.getScheduleByDisciplineName(disciplineScheduleList, parameters.get("disciplineName")), disciplineScheduleList);
         } else {
             disciplineScheduleList = this.getWeekSchedule();
+            return new ResponseTool(formatterResponse.getSchedule(disciplineScheduleList), disciplineScheduleList);
         }
-
-        return new ResponseTool("", disciplineScheduleList);
     }
 
     public IResponseTool getGrades(Map<String, String> parameters) {
@@ -626,29 +666,53 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
 
         if (parameters.containsKey("semester")) {
             disciplineGrades = this.getGradesBySemester(parameters.get("semester"));
+            return new ResponseTool(formatterResponse.getGradesBySemester(disciplineGrades, parameters.get("semester")), disciplineGrades);
         } else if (parameters.containsKey("disciplineName")) {
             disciplineGrades = this.getGradeByDisciplineName(parameters.get("disciplineName"));
+            return new ResponseTool(formatterResponse.getGradesByDisciplineName(disciplineGrades, parameters.get("disciplineName")), disciplineGrades);
         } else {
             disciplineGrades = this.getGrades();
+            return new ResponseTool(formatterResponse.getGrades(disciplineGrades), disciplineGrades);
         }
-
-        return new ResponseTool("", disciplineGrades);
     }
 
     public IResponseTool getAcademicData(Map<String, String> parameters) {
-        return new ResponseTool("", getAcademicData());
+        IAcademicData data = getAcademicData();
+        return new ResponseTool(formatterResponse.getAcademicData(data), data);
     }
 
     public IResponseTool getStudentData(Map<String, String> parameters) {
-        return new ResponseTool("", getStudentData());
+        IStudentData studentData = getStudentData();
+        return new ResponseTool(formatterResponse.getStudentData(studentData), studentData);
     }
 
     public IResponseTool getActiveDisciplinesWithAbsences(Map<String, String> parameters) {
-       return new ResponseTool("", getActiveDisciplinesWithAbsences());
+        if (parameters.get("disciplineName") != null) {
+            List<IDisciplineAbsence> disciplineAbsenceList = this.getActiveDisciplinesWithAbsencesByDisciplineName(parameters.get("disciplineName"));
+            return new ResponseTool(formatterResponse.getActiveDisciplinesWithAbsencesByDisciplineName(disciplineAbsenceList, parameters.get("disciplineName")), disciplineAbsenceList);
+        } else {
+            List<IDisciplineAbsence> disciplineAbsenceList = this.getActiveDisciplinesWithAbsences();
+            return new ResponseTool(formatterResponse.getActiveDisciplinesWithAbsences(disciplineAbsenceList), disciplineAbsenceList);
+        }
     }
 
-    public IResponseTool getCompExtHours(Map<String, String> parameters) {
-        return new ResponseTool("", getCompExtHours());
+    public IResponseTool getComplementaryActivities(Map<String, String> parameters) {
+        ComplementaryActivitiesUEG data = getComplementaryActivities();
+        return new ResponseTool(formatterResponse.getComplementaryHours(data), data);
+    }
+
+    public IResponseTool getExtensionActivities(Map<String, String> parameters) {
+        ExtensionActivitiesUEG data = getExtensionActivities();
+        return new ResponseTool(formatterResponse.getExtensionHours(data), data);
+    }
+
+    public IResponseTool verifyStudentIsAuthenticated(Map<String, String> parameters) {
+        try {
+            if (Objects.isNull(acuId)) getPersonId();
+            return new ResponseTool("O usuário está autenticado", null);
+        } catch (Exception e) {
+            return new ResponseTool("O usuário não está autenticado", null);
+        }
     }
 
     public IResponseTool calculateAverage(Map<String, String> parameters) {

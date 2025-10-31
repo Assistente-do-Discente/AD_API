@@ -220,7 +220,12 @@ public class PlannerService {
                 ToolDTO.tool(
                         "getPlanners",
                         "Ferramenta para buscar todas as agendas criadas",
-                        this::getAll
+                        this::getAll,
+                        Map.of(
+                                "studentId", ParameterTool.autoParam(
+                                        "Identificador do estudante para criar a agenda, esse parâmetro é automatico e não deve ser enviado", this::getStudentId
+                                )
+                        )
                 ),
                 ToolDTO.tool(
                         "updatePlanner",
@@ -273,7 +278,12 @@ public class PlannerService {
                 ToolDTO.tool(
                         "getTasks",
                         "Ferramenta para buscar todas as tarefas/lembretes criadas",
-                        this::getAllTask
+                        this::getAllTask,
+                        Map.of(
+                                "studentId", ParameterTool.autoParam(
+                                        "Identificador do estudante para criar a agenda, esse parâmetro é automatico e não deve ser enviado", this::getStudentId
+                                )
+                        )
                 ),
                 ToolDTO.tool(
                         "updateTask",
