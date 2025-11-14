@@ -16,7 +16,7 @@ COPY ./src ./src
 RUN mvn clean install -Dmaven.test.skip=true
   #Stage 2
   # set base image for second stage
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk-jammy
   # set deployment directory
 WORKDIR /app
   # copy over the built artifact from the maven image
