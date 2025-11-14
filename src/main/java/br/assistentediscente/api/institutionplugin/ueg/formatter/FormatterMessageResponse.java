@@ -173,7 +173,6 @@ public class FormatterMessageResponse {
 
                 Long total = discipline.getTotalAbsence() != null ? discipline.getTotalAbsence() : 0L;
                 Long justified = discipline.getTotalExcusedAbsences() != null ? discipline.getTotalExcusedAbsences() : 0L;
-                Long unexcused = Math.max(total - justified, 0L);
 
                 message.append("*Total de faltas:* ").append(total).append("\n").append("*Faltas abonadas:* ").append(justified).append("\n");
 
@@ -183,6 +182,32 @@ public class FormatterMessageResponse {
 
         if (!found) {
             message.append("Nenhuma informação de faltas encontrada para esta disciplina.");
+        }
+
+        return message.toString().trim();
+    }
+
+    public String getActiveDisciplinesWithAbsencesBySemester(List<IDisciplineAbsence> list, String semester) {
+        StringBuilder message = new StringBuilder();
+        message.append("📘 *Faltas do semestre ").append(semester).append("*\n\n");
+
+        boolean found = false;
+
+        for (IDisciplineAbsence discipline : list) {
+            if (discipline.getSemesterActive().equalsIgnoreCase(semester)) {
+                found = true;
+
+                message.append("*Disciplina:* ").append(discipline.getDisciplineName()).append("\n");
+
+                Long total = discipline.getTotalAbsence() != null ? discipline.getTotalAbsence() : 0L;
+                Long justified = discipline.getTotalExcusedAbsences() != null ? discipline.getTotalExcusedAbsences() : 0L;
+
+                message.append("*Total de faltas:* ").append(total).append("\n").append("*Faltas abonadas:* ").append(justified).append("\n\n");
+            }
+        }
+
+        if (!found) {
+            message.append("Nenhuma informação de faltas encontrada para este semestre.");
         }
 
         return message.toString().trim();

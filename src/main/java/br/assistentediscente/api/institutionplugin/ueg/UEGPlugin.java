@@ -354,6 +354,11 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         return disciplineAbsence.stream().filter(discipline -> disciplineToGet.equalsIgnoreCase(discipline.getDisciplineName().toUpperCase())).toList();
     }
 
+    public List<IDisciplineAbsence> getActiveDisciplinesWithAbsencesBySemester(String semester) {
+        List<IDisciplineAbsence> disciplineAbsence = this.getActiveDisciplinesWithAbsences();
+        return disciplineAbsence.stream().filter(discipline -> semester.equalsIgnoreCase(discipline.getSemesterActive().toUpperCase())).toList();
+    }
+
     public IStudentData getStudentData() throws IntentNotSupportedException, InstitutionComunicationException {
 
         HttpGet httpGet = new HttpGet(PERFIL);
@@ -540,17 +545,21 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         return new ArrayList<>(List.of(
                 Tool.tool(
                         "getSchedule",
-                        "Obter o horário de aulas",
+                        """
+                        Use esta ferramenta para obter a grade de horários do estudante. Execute quando o usuário pedir informações sobre aulas, dias, horários, disciplinas, professores ou sala. O retorno inclui todas as disciplinas, horários por dia, professor, sala e intervalos consolidados. Utilize somente quando ficar claro que o usuário deseja consultar dados do cronograma acadêmico.
+                        """,
                         this::getSchedules
                 ),
                 Tool.tool(
                         "getScheduleByWeekDay",
-                        "Obter o horário de aulas do dia informado, ou se informado 'hoje', 'amanhã', 'ontem', entre outros",
-                        this::getSchedules,
+                        """
+                        Use esta ferramenta para obter o horário de aulas de um dia específico. Utilize quando o usuário pedir as aulas de hoje, amanhã, ontem ou mencionar dias como segunda, terça, etc. O retorno inclui disciplinas, horários, professores e salas referentes apenas ao dia solicitado.
+                        """,
+        this::getSchedules,
                         Map.of(
                                 "weekDay",
                                 ParameterTool.enumParam(
-                                        "O dia da semana, como segunda-feira ou sábado",
+                                        "O dia da semana solicitado pelo usuário, podendo ser segunda, terça, e outros.",
                                         WeekDay.values(),
                                         WeekDay::getShortName
                                 )
@@ -558,88 +567,165 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 ),
                 Tool.tool(
                         "getScheduleByDisciplineName",
-                        "Obter o horário de aula da disciplina informada",
+                        """
+                        Use esta ferramenta para consultar o horário de aula de uma disciplina específica. Utilize quando o usuário pedir o horário, o dia, o professor ou a sala de uma disciplina pelo nome. O retorno inclui todos os horários, professores e salas referentes somente à disciplina informada.
+                        """,
                         this::getSchedules,
                         Map.of(
                                 "disciplineName",
-                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY, null, this::getDisciplineNames)
+                                ParameterTool.stringParam("O nome da disciplina que o usuário deseja consultar", ParameterType.MANDATORY, null, this::getDisciplineNames)
                         )
                 ),
                 Tool.tool(
                         "getGrades",
-                        "Obter as notas do estudante",
+                        """
+                        Use esta ferramenta para consultar as notas do estudante em todas as disciplinas. Utilize quando o usuário pedir suas notas, média final, avaliações, pesos, desempenho por matéria ou boletim. O retorno inclui média final, avaliações detalhadas e semestre de cada disciplina.
+                        """,
                         this::getGrades
                 ),
                 Tool.tool(
                         "getGradesByDisciplineName",
-                        "Obter as notas do estudante pelo nome da disciplina",
+                        """
+                        Use esta ferramenta para consultar as notas do estudante em uma disciplina específica. Utilize quando o usuário pedir a média, avaliações, pesos ou desempenho de uma matéria pelo nome. O retorno inclui média final, semestre e o detalhamento de cada avaliação da disciplina informada.
+                        """,
                         this::getGrades,
                         Map.of(
                                 "disciplineName",
-                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY, null, this::getDisciplineNames)
+                                ParameterTool.stringParam("O nome da disciplina para a qual o usuário deseja consultar as notas", ParameterType.MANDATORY, null, this::getDisciplineNames)
+                        )
+                ),
+                Tool.tool(
+                        "getGradesBySemester",
+                        """
+                        Use esta ferramenta para consultar todas as notas do estudante em um semestre específico. Utilize quando o usuário pedir as notas de um período como 2025/1 ou 2025/2. O retorno inclui cada disciplina cursada no semestre, com a média final e semestre e o detalhamento de cada avaliação da disciplina correspondente.
+                        """,
+                        this::getGrades,
+                        Map.of(
+                                "semester",
+                                ParameterTool.stringParam("O semestre solicitado pelo usuário, no formato 'AAAA/N', por exemplo: '2025/2'.", ParameterType.MANDATORY, null, null)
                         )
                 ),
                 Tool.tool(
                         "calculateAverage",
-                        "Calcular qual nota mínima o aluno precisa tirar na 1ªVA ou na 2°Va ou para obter o resultado da média caso informado as 2 notas. Padrão UEG: média ponderada (1VA * 2 + 2VA * 3) / 5 e média mínima 60.",
-                        this::calculateAverage,
+                        """
+                        Esta não é uma ferramenta de cálculo direto. Em vez disso, serve como instrução
+                        para o agente saber como calcular a média UEG utilizando apenas ferramentas
+                        matemáticas básicas disponíveis (adição, multiplicação e divisão).
+                        
+                        Fórmula da média UEG:
+                          ((N1 * 2) + (N2 * 3)) / 5
+                        
+                        Como o agente deve proceder:
+                        1. Multiplicar N1 por 2 usando a ferramenta de multiplicação.
+                        2. Multiplicar N2 por 3 usando a ferramenta de multiplicação.
+                        3. Somar os dois resultados usando a ferramenta de adição.
+                        4. Dividir o valor obtido por 5 usando a ferramenta de divisão.
+                        5. Retornar o resultado final como a média.
+                        
+                        Quando usar:
+                        - Sempre que o usuário pedir para calcular a média UEG ou solicitar\s
+                          "calcule minha média", "qual seria a média", "como fica minha média",\s
+                          ou variações semelhantes.
+                        
+                        Importante:
+                        - Esta ferramenta não retorna valores por si mesma.
+                        - Ela apenas orienta o agente sobre o procedimento a seguir.
+                        - A responsabilidade do cálculo é das ferramentas matemáticas básicas.
+                        
+                        Exemplo de Reposta:
+                        - Tendo como N1 igual a 45 você precisa tirar 70 na N2 para atingir a média mínima de 60.
+                        - Tendo como N2 igual a 70 você precisa tirar 45 na N2 para atingir a média mínima de 60.
+                        """,
                         Map.of(
                                 "nota1va", ParameterTool.numberParam(
                                         "Nota obtida na 1ª NA (0 a 100)", ParameterType.OPTIONAL, null, null
                                 ),
                                 "nota2va", ParameterTool.numberParam(
                                         "Nota obtida na 2ª NA (0 a 100)", ParameterType.OPTIONAL, null, null
+                                ),
+                                "media", ParameterTool.numberParam(
+                                        "média (0 a 100)", ParameterType.OPTIONAL, null, null
                                 )
                         )
                 ),
                 Tool.tool(
                         "getAcademicData",
-                        "Obter dados sobre a integralização do estudante no curso (é possivel obter a média geral do curso)",
+                        """
+                        Use esta ferramenta para consultar dados gerais do estudante no curso, incluindo média geral, situação acadêmica, percentual concluído e nome do curso. Utilize quando o usuário pedir sua média geral, progresso no curso ou situação acadêmica.
+                        """,
                         this::getAcademicData
                 ),
                 Tool.tool(
                         "getStudentData",
-                        "Obter dados sobre o estudante, outra função dessa ferramenta é verificar se o usuário está logado! ",
+                        """
+                        Use esta ferramenta para consultar os dados básicos do estudante, como nome completo, e-mail institucional e identificador acadêmico. Utilize quando o usuário pedir informações pessoais relacionadas ao seu cadastro.
+                        """,
                         this::getStudentData
                 ),
                 Tool.tool(
-                        "getActiveDisciplinesWithAbsences",
-                        "Obter o número de falta pela disciplina informada",
+                        "getAbsences",
+                        """
+                        Use esta ferramenta para consultar o número de faltas do estudante em todas as disciplinas. Utilize quando o usuário pedir suas faltas gerais.
+                        """,
+                        this::getActiveDisciplinesWithAbsences
+                ),
+                Tool.tool(
+                        "getAbsencesByDisciplineName",
+                        """
+                        Use esta ferramenta para consultar as faltas do estudante em uma disciplina específica. Utilize quando o usuário pedir o total de faltas ou faltas abonadas de uma matéria pelo nome.
+                        """,
                         this::getActiveDisciplinesWithAbsences,
                         Map.of(
                                 "disciplineName",
-                                ParameterTool.stringParam("O nome da disciplina", ParameterType.MANDATORY, null, this::getDisciplineNames)
+                                ParameterTool.stringParam("O nome da disciplina para a qual o usuário deseja consultar as faltas.", ParameterType.MANDATORY, null, this::getDisciplineNames)
+                        )
+                ),
+                Tool.tool(
+                        "getAbsencesBySemester",
+                        """
+                        Use esta ferramenta para consultar todas as faltas do estudante em um semestre específico. Utilize quando o usuário pedir as faltas referentes a períodos como 2025/1 ou 2025/2.
+                        """,
+                        this::getActiveDisciplinesWithAbsences,
+                        Map.of(
+                                "semester",
+                                ParameterTool.stringParam("O semestre solicitado pelo usuário, no formato 'AAAA/N', por exemplo: '2025/2'.", ParameterType.MANDATORY, null, null)
                         )
                 ),
                 Tool.tool(
                         "getComplementaryActivities",
                         """
-                        Obter todas informações sobre as atividades complementares que estão registradas
+                        Use esta ferramenta para consultar todas as atividades complementares registradas pelo estudante. Utilize quando o usuário pedir suas horas cumpridas, horas necessárias, atividades aprovadas, pendentes ou o detalhamento de cada atividade realizada.
                         """,
                         this::getComplementaryActivities
                 ),
                 Tool.tool(
                         "getExtensionActivities",
                         """
-                        Obter todas informações sobre as atividades e horas de extensão.
+                        Use esta ferramenta para consultar todas as atividades de extensão do estudante. Utilize quando o usuário pedir as horas cumpridas, horas exigidas, atividades aprovadas ou o detalhamento das ações de extensão registradas.
                         """,
                         this::getExtensionActivities
                 ),
                 Tool.tool(
                         "getAboutUeg",
-                        "Obtenha informações sobre a UEG e sua história",
+                        """
+                        Use esta ferramenta para obter informações institucionais sobre a UEG, incluindo sua história, fundamentos legais e dados gerais. Utilize quando o usuário pedir informações sobre a universidade.
+                        """,
                         false,
                         this::getAboutUeg
                 ),
                 Tool.tool(
                         "getContactUeg",
-                        "Obtenha todas informações sobre os contatos da UEG como telefone, email, entre outros",
+                        """
+                        Use esta ferramenta para consultar os contatos institucionais da UEG, incluindo telefones, e-mails e informações de setores específicos. Utilize quando o usuário pedir formas de contato com a universidade.
+                        """,
                         false,
                         this::getContactUeg
                 ),
                 Tool.tool(
                         "verifyStudentIsAuthenticated",
-                        "Realiza verificação se o usuário está logado!",
+                        """
+                        Realiza verificação se o usuário está logado!
+                        """,
                         false,
                         this::verifyStudentIsAuthenticated
                 )
@@ -690,6 +776,9 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         if (parameters.get("disciplineName") != null) {
             List<IDisciplineAbsence> disciplineAbsenceList = this.getActiveDisciplinesWithAbsencesByDisciplineName(parameters.get("disciplineName"));
             return new ResponseTool(formatterResponse.getActiveDisciplinesWithAbsencesByDisciplineName(disciplineAbsenceList, parameters.get("disciplineName")), disciplineAbsenceList);
+        } if (parameters.get("semester") != null) {
+            List<IDisciplineAbsence> disciplineAbsenceList = this.getActiveDisciplinesWithAbsencesBySemester(parameters.get("semester"));
+            return new ResponseTool(formatterResponse.getActiveDisciplinesWithAbsencesBySemester(disciplineAbsenceList, parameters.get("semester")), disciplineAbsenceList);
         } else {
             List<IDisciplineAbsence> disciplineAbsenceList = this.getActiveDisciplinesWithAbsences();
             return new ResponseTool(formatterResponse.getActiveDisciplinesWithAbsences(disciplineAbsenceList), disciplineAbsenceList);
@@ -713,22 +802,6 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
         } catch (Exception e) {
             return new ResponseTool("O usuário não está autenticado", null);
         }
-    }
-
-    public IResponseTool calculateAverage(Map<String, String> parameters) {
-        Double nota1 = parameters.containsKey("nota1va") ? Double.parseDouble(parameters.get("nota1va")) : null;
-        Double nota2 = parameters.containsKey("nota2va") ? Double.parseDouble(parameters.get("nota2va")) : null;
-        Double resultado;
-
-        if (nota1 != null && nota2 != null) {
-            resultado = ((nota1*2) + (nota2*3)) / 5;
-        } else if (nota1 != null) {
-            resultado = (300 - (nota1*2)) / 3;
-        } else {
-            resultado = (300 - (nota2*3)) / 2;
-        }
-
-        return new ResponseTool("", BigDecimal.valueOf(resultado).setScale(2, RoundingMode.HALF_EVEN).doubleValue());
     }
 
     public IResponseTool getContactUeg(Map<String, String> parameters) {

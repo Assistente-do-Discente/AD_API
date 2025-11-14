@@ -387,7 +387,12 @@ public class ResponseService extends Reflection{
         try {
             this.mountParameters(tool, parameters, institutionPlugin);
 
-            return tool.getExecuteMethod().execute(parameters);
+            if (tool.getExecuteMethod() != null) {
+                return tool.getExecuteMethod().execute(parameters);
+            } else {
+                return new ResponseToolDTO("Essa ferramenta é apenas informativa, utilize sua descrição para realizar sua análise.", "");
+            }
+
         } catch (Exception e) {
             handleException(e, new RuntimeException(e.getMessage()));
         }
@@ -416,10 +421,10 @@ public class ResponseService extends Reflection{
                             throw new ParamNotFoundException(Arrays.asList(keyParameter));
                         }
 
-                        if (parameter.getNormalizationMethod() != null) {
+                        if (parameter.getNormalizationMethod() != null && parameters.get(keyParameter) != null) {
                             parameters.put(keyParameter, parameter.getNormalizationMethod().normalize(parameters.get(keyParameter)));
                         }
-                        if (parameter.getPossibleValuesMethod() != null) {
+                        if (parameter.getPossibleValuesMethod() != null && parameters.get(keyParameter) != null) {
                             String itemFound = this.aiService.getItemInList(parameters.get(keyParameter), parameter.getPossibleValuesMethod().getPossibleValues());
                             parameters.put(keyParameter, itemFound);
                         }

@@ -26,6 +26,10 @@ public class Tool implements IBaseTool {
     Class<? extends IServicePlugin> serviceClass;
     Boolean authenticationRequired;
 
+    public static Tool tool(String name, String description, Map<String, AParameter> parameters) {
+        return tool(name, description, false, null, parameters);
+    }
+
     public static Tool tool(String name, String description, IToolMethod executeMethod) {
         return tool(name, description, true, executeMethod, null);
     }
