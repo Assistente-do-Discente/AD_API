@@ -129,7 +129,15 @@ public class ConverterUEG implements IConverterInstitution {
 
         for (JsonElement jsonElement : jsonArray) {
             if (jsonElement.toString().contains("\"gra_periodo\":\""+semester+"\"")) {
+                JsonObject jsonObject = jsonElement.getAsJsonObject();
+                List<IDetailedDisciplineGrade> detailedGradeList = new ArrayList<>();
+
+                for (JsonElement element : jsonObject.getAsJsonArray("nota_list")){
+                    DetailedDisciplineGradeUEG detailedGradeUEG = gson.fromJson(element, DetailedDisciplineGradeUEG.class);
+                    detailedGradeList.add(detailedGradeUEG);
+                }
                 DisciplineGradeUEG gradeUEG = gson.fromJson(jsonElement, DisciplineGradeUEG.class);
+                gradeUEG.setDetailedGrades(detailedGradeList);
                 iGradeList.add(gradeUEG);
             }
         }
