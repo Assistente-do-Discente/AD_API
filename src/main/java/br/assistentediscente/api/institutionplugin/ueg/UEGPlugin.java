@@ -579,7 +579,7 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
                 Tool.tool(
                         "getGrades",
                         """
-                        Use esta ferramenta para consultar as notas do estudante em todas as disciplinas. Utilize quando o usuário pedir suas notas, média final, avaliações, pesos, desempenho por matéria ou boletim. O retorno inclui média final, avaliações detalhadas e semestre de cada disciplina.
+                        Use esta ferramenta para consultar todas as notas do estudante em todas as disciplinas. O retorno inclui média final, avaliações detalhadas e semestre de cada disciplina.
                         """,
                         this::getGrades
                 ),
@@ -798,9 +798,9 @@ public class UEGPlugin implements IBaseInstitutionPlugin, UEGEndpoint {
     public IResponseTool verifyStudentIsAuthenticated(Map<String, String> parameters) {
         try {
             if (Objects.isNull(acuId)) getPersonId();
-            return new ResponseTool("O usuário está autenticado", null);
+            return new ResponseTool("O usuário está autenticado", "O usuário está autenticado");
         } catch (Exception e) {
-            return new ResponseTool("O usuário não está autenticado", null);
+            return new ResponseTool("O usuário não está autenticado", "O usuário não está autenticado");
         }
     }
 
